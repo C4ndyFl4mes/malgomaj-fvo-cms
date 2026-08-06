@@ -1,0 +1,40 @@
+@inherits MenuItemBase
+
+@if (MenuItem.SubMenuItems.Any())
+{
+    <li class="w-full flex items-center justify-between @ParentBottomMargin rounded-xl shadow-md bg-slate-50 min-h-14">
+        <NavLink href="@MenuItem.Href" ActiveClass="active" Match="NavLinkMatch.All" class="flex items-center gap-2 w-full p-3" @onclick="ToggleSubMenuItems">
+            <img src="@MenuItem.Icon" width="32" height="32" aria-hidden="true" alt="icon" />
+            <span>@MenuItem.Title</span>
+        </NavLink>
+        <button class="cursor-pointer m-2" @onclick="ToggleSubMenuItems">
+            @if (IsOpen)
+            {
+                <img src="icons/chevron_up.svg" width="24" height="24" aria-hidden="true" alt="Togglar undermeny" />
+            }
+            else
+            {
+                <img src="icons/chevron_down.svg" width="24" height="24" aria-hidden="true" alt="Togglar undermeny" />
+            }
+        </button>
+    </li>
+    @if (IsOpen)
+    {
+        <ul class="ms-10 flex flex-col">
+            @foreach (MenuItemModel subMenuItem in MenuItem.SubMenuItems)
+            {
+                <li>
+                    <MenuItem MenuItem="@subMenuItem"/>
+                </li>
+            }
+        </ul>
+    }
+}
+else
+{
+    <li class="flex items-center justify-between mb-2 rounded-xl shadow-md bg-slate-50 min-h-14">
+        <NavLink href="@MenuItem.Href" ActiveClass="active" Match="NavLinkMatch.All" class="flex items-center gap-2 w-full p-3 rounded">
+            <img src="@MenuItem.Icon" width="32" height="32" aria-hidden="true" alt="icon" /> @MenuItem.Title
+        </NavLink>
+    </li>
+}

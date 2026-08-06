@@ -1,0 +1,10 @@
+@inherits MenuBase
+@rendermode InteractiveServer
+
+<ul class="w-full flex flex-col gap-2">
+    @foreach (MenuItemModel menuItem in MenuItems)
+    {
+        <MenuItem MenuItem="@menuItem" />
+    }
+</ul>
+

@@ -1,0 +1,18 @@
+{
+  "name": "malgomajfvocms",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "css:build": "tailwindcss -i ./server/wwwroot/styles/input.css -o ./server/wwwroot/styles/output.css --minify",
+    "css:dev": "tailwindcss -i ./server/wwwroot/styles/input.css -o ./server/wwwroot/styles/output.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

@@ -1,0 +1,16 @@
+name: Build and Publish image to Docker Hub
+on:
+  [workflow_dispatch]
+
+jobs:
+  publish_image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: build image
+        run: docker build ./ -t caandyflames/malgomaj-fvo-cms:latest
+      - name: push image to Docker Hub
+        run: |
+            docker login -u caandyflames -p ${{ secrets.DOCKER_HUB_TOKEN }}
+            docker push caandyflames/malgomaj-fvo-cms:latest
