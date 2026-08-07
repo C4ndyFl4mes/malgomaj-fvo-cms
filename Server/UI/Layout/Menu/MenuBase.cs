@@ -11,7 +11,7 @@ public class MenuBase : ComponentBase
         MenuItems = [
             new MenuItemModel {
                 Title = "Panelen",
-                Href = "/admin",
+                Href = "/admin/panel",
                 Icon = GetIcon("dashboard")
             },
             new MenuItemModel {

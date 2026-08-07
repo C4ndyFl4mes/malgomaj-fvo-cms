@@ -1,0 +1,183 @@
+@page "/admin/files/images"
+@* @using Server.API.Enums *@
+@* @using Server.API.Routes.ImageFile.GET
+@using Server.UI.Components.Overlay *@
+@inherits ImagesBase
+
+<h1 class="text-3xl mb-2">Bildhantering</h1>
+@* 
+<form>
+    <label
+        class="w-full h-40 bg-slate-100 flex justify-center items-center rounded-2xl shadow-lg font-bold cursor-pointer">
+        Klicka eller släpp bildfilhär
+        <InputFile id="newImageFileOpenOverlay" OnChange="SetImageField" class="hidden" />
+    </label>
+</form>
+
+<div class="bg-slate-50 rounded-2xl shadow-lg mt-15">
+    <ImageTabs @ref="ImageTabsRef" AllowedImageTabs="AllowedImageTabs"
+               OnValidationErrors="@((v) => ValidationErrorsOfImageRetrieval = v)"
+               OnTabSelected="@((images) => { ImagesOfSelectedTab = images; })" />
+    <div class="p-3 min-h-200">
+        @if (ValidationErrorsOfImageRetrievalDisplay.Keys.Contains("Images"))
+        {
+            <ul class="error text-center">
+                @foreach (string error in ValidationErrorsOfImageRetrievalDisplay["Images"])
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        }
+        else
+        {
+            @if (!ImagesOfSelectedTab.Item2.Any())
+            {
+                <p class="text-center text-gray-500 mt-4">Inga bilder att visa.</p>
+            }
+            else
+            {
+                <div class="@(ImagesOfSelectedTab.Item1 != ImageType.Icon ? "grid grid-cols-4" : "flex flex-wrap") gap-4">
+                    @foreach (ImageDTO image in ImagesOfSelectedTab.Item2)
+                    {
+                        string basePath = $"/images/{image.Id}";
+                        var (width, height) = DimensionsForImageType[ImagesOfSelectedTab.Item1];
+                        string altText = !string.IsNullOrWhiteSpace(image.AltText)
+                            ? image.AltText
+                            : "Bild";
+                        
+                        @if (image.Type != ImageType.Icon.ToString())
+                        {
+                            <picture class="max-w-100 cursor-pointer" @onclick="() => HandleImageClick(image, width, height)">
+                                <source media="max-width: 600px" type="image/webp" srcset="@($"{basePath}/webp/mobile.webp")" />
+                                <source media="min-width: 601px" type="image/webp" srcset="@($"{basePath}/webp/desktop.webp")" />
+                                <source media="max-width: 600px" srcset="@($"{basePath}/jpg/mobile.jpg")" />
+                                <source media="min-width: 601px" srcset="@($"{basePath}/jpg/desktop.jpg")" />
+                                <img src="@($"{basePath}/jpg/desktop.jpg")" width="@width" height="@height" alt="@altText" loading="lazy"
+                                     decoding="async"
+                                     class="object-cover rounded-lg shadow-md @CSSClassesForImageType[ImagesOfSelectedTab.Item1]" />
+                            </picture>
+                        }
+                        else
+                        {
+                            <img src="@($"{basePath}/svg/icon.svg")" width="150" height="150" alt="@altText" loading="lazy"
+                                 decoding="async"
+                                 class="cursor-pointer object-cover rounded-lg shadow-md @CSSClassesForImageType[ImagesOfSelectedTab.Item1]"
+                                 @onclick="() => HandleImageClick(image, width, height)" />
+                        }
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<Overlay IsOpen="@IsImageInspectionOverlayOpen" Changed="@((v) => { if (!v) ImageInspection = null; })">
+    @if (ImageInspection is not null)
+    {
+        <InspectImage ImageInspection="@ImageInspection" OnImageDeleted="UpdateUIAfterImageDeletion" />
+    }
+</Overlay>
+
+<Overlay IsOpen="@IsNewImageOverlayOpen"
+         Changed="@((v) => { IsNewImageOverlayOpen = v; if (!v) ResetNewImageForm(); })">
+    <div class="w-110 max-w-full">
+        <h2 class="text-2xl mb-4">Bilduppladdning</h2>
+        <table class="table-auto border-collapse mb-4 w-full bg-slate-100">
+            <caption class="text-xl text-left">Bild egenskaper</caption>
+            <tr>
+                <td class="border p-1">Namn:</td>
+                <td class="border p-1">@(NewImageFile?.Name ?? "Ingen fil vald.")</td>
+            </tr>
+            <tr>
+                <td class="border p-1">Storlek:</td>
+                <td class="border p-1">@(NewImageFile != null ? $"{NewImageFile.Size / 1024} KB" : "N/A")</td>
+            </tr>
+            <tr>
+                <td class="border p-1">Typ:</td>
+                <td class="border p-1">@(NewImageFile?.ContentType ?? "N/A")</td>
+            </tr>
+        </table>
+        @if (ValidationErrors.Keys.Contains("imageFile"))
+        {
+            <ul class="error">
+                @foreach (string error in ValidationErrors["imageFile"])
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        }
+        @if (ValidationErrors.Keys.Contains("invalidFileType"))
+        {
+            <ul class="error">
+                @foreach (string error in ValidationErrors["invalidFileType"])
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        }
+        <form class="flex flex-col">
+            <h3 class="text-xl">Propotioner</h3>
+            <div class="mb-4">
+                <label for="imageTypeSelect" class="mr-2">Bildtyp:</label>
+                <select id="imageTypeSelect" @bind="NewImageType" class="border rounded px-2 py-1 bg-slate-100">
+                    @foreach ((string, ImageType) imageType in ImageTypes)
+                    {
+                        <option value="@imageType.Item2">@imageType.Item1</option>
+                    }
+                </select>
+                @if (ValidationErrors.Keys.Contains("type"))
+                {
+                    <ul class="error">
+                        @foreach (string error in ValidationErrors["type"])
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                }
+                @if (ValidationErrors.Keys.Contains("WrongFileTypeForImageType"))
+                {
+                    <ul class="error">
+                        @foreach (string error in ValidationErrors["WrongFileTypeForImageType"])
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                }
+            </div>
+            <h3 class="text-xl">Alt-text</h3>
+            <input type="text"
+                   class="border rounded px-2 py-1"
+                   value="@NewImageAltText"
+                   @onchange="@(e => { NewImageAltText = e.Value?.ToString() ?? string.Empty; })" />
+            @if (ValidationErrors.Keys.Contains("AltText"))
+            {
+                <ul class="error">
+                    @foreach (string error in ValidationErrors["AltText"])
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            }
+            <button type="button"
+                    class="mt-4 mx-auto cursor-pointer bg-blue-500 text-white px-4 py-2 rounded hover:brightness-95 active:brightness-90 duration-200"
+                    @onclick="HandleAddNewImageAsync">
+                Lägg till bild
+            </button>
+            @if (ResultMessage.Message != string.Empty)
+            {
+                @if (ResultMessage.IsSuccess)
+                {
+                    <div class="success">
+                        <span>@ResultMessage.Message</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="error">
+                        <span>@ResultMessage.Message</span>
+                    </div>
+                }
+            }
+        </form>
+    </div>
+</Overlay> *@
