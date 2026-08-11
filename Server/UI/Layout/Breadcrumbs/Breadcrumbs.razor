@@ -1,17 +1,29 @@
 @inherits BreadcrumbsBase
 
-@* <nav class="w-fit min-h-14 px-4 py-2 flex items-center gap-3 border-b rounded-br-lg border-slate-200" aria-label="Brödsmulor">
+<nav class="w-fit min-h-14 px-4 py-2 flex items-center gap-3 border-b rounded-br-lg border-slate-200"
+     aria-label="Brödsmulor">
     @foreach (BreadcrumbModel breadcrumb in NavigationState.Breadcrumbs)
     {
         <div class="flex items-center gap-2">
-            <NavLink href="@breadcrumb.Href" ActiveClass="active" Match="NavLinkMatch.All" class="text-md">
-                @breadcrumb.Title
-            </NavLink>
+            @if (breadcrumb.Href is not null)
+            {
+                <NavLink href="@breadcrumb.Href" ActiveClass="active" Match="NavLinkMatch.All" class="text-md">
+                    @breadcrumb.Title
+                </NavLink>
+            }
+            else 
+            {
+                <p class="text-md">
+                    @breadcrumb.Title
+                </p>
+            }
+
             @if (breadcrumb != NavigationState.Breadcrumbs.Last())
             {
-                <img src="icons/chevron_right.svg" width="24" height="24" aria-hidden="true" alt="Separator mellan brödsmulor" class="w-8"/>
+                <img src="icons/chevron_right.svg" width="24" height="24" aria-hidden="true" alt="Separator mellan brödsmulor"
+                     class="w-8" />
             }
         </div>
     }
-</nav> *@
+</nav>
 

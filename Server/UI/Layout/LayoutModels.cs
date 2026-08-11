@@ -11,5 +11,5 @@ public record MenuItemModel
 public record BreadcrumbModel
 {
     public required string Title { get; set; }
-    public required string Href { get; set; }
+    public string? Href { get; set; }
 }

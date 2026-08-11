@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using FluentValidation;
 using FluentValidation.Results;
 using Server.API.Exceptions;
+using Server.UI.States;
 // using Server.API.Routes.ImageFile.GET;
 // using Server.UI.Components.ImageTabs;
 // using Server.UI.Components;
@@ -14,8 +15,8 @@ namespace Server.UI.Pages.Files.ImagesPage;
 
 public class ImagesBase : ComponentBase
 {
-    // [Inject]
-    // protected NavigationState NavigationState { get; set; } = default!;
+    [Inject]
+    protected NavigationState NavigationState { get; set; } = default!;
     // [Inject]
     // protected IValidator<PostImageRequest> PostImageValidator { get; set; } = default!;
     // [Inject]
@@ -79,26 +80,25 @@ public class ImagesBase : ComponentBase
     //     [ImageType.Icon] = (64, 64)
     // };
 
-    // protected override void OnInitialized()
-    // {
-    //     NavigationState.SetBreadcrumbs([
-    //         new BreadcrumbModel
-    //         {
-    //             Title = "Panel",
-    //             Href = "/admin"
-    //         },
-    //         new BreadcrumbModel
-    //         {
-    //             Title = "Filer",
-    //             Href = "/admin/files"
-    //         },
-    //         new BreadcrumbModel
-    //         {
-    //             Title = "Bildhantering",
-    //             Href = "/admin/files/images"
-    //         }
-    //     ]);
-    // }
+    protected override void OnInitialized()
+    {
+        NavigationState.SetBreadcrumbs([
+            new BreadcrumbModel
+            {
+                Title = "Panel",
+                Href = "/admin/panel"
+            },
+            new BreadcrumbModel
+            {
+                Title = "Filer"
+            },
+            new BreadcrumbModel
+            {
+                Title = "Bildhantering",
+                Href = "/admin/files/images"
+            }
+        ]);
+    }
 
     // // Hanterar uppladdning av en ny bild: validerar, skickar till API:t och uppdaterar UI.
     // protected async Task HandleAddNewImageAsync()

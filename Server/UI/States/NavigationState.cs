@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Server.UI.Layout;
 
-namespace Server.UI.Layout;
+namespace Server.UI.States;
 
-public class NavigationState : IDisposable
+// Handles navigation state for breadcrumbs.
+public class NavigationState
 {
     private readonly NavigationManager _nav;
     public event Action? OnChange;
