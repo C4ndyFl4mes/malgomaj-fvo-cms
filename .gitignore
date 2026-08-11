@@ -14,7 +14,7 @@
 *.sln.docstates
 .secrets/
 
-/wwwroot/js/*
+js/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
