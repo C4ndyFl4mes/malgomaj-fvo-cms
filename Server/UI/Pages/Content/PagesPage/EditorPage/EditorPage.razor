@@ -1,0 +1,44 @@
+@page "/admin/content/pages/edit/{PageId:guid}"
+@inherits EditorPageBase
+
+<PageTitle>Redigera Sida</PageTitle>
+
+<h1 class="text-3xl">Redigera Sida</h1>
+
+@if (ValidationErrors.Keys.Contains("init"))
+{
+    <ul class="error">
+        @foreach (string error in ValidationErrors["init"])
+        {
+            <li>@error</li>
+        }
+    </ul>
+}
+else if (PageEditorModel is not null)
+{
+    <div class="flex flex-col rounded-2xl border-t-2 border-slate-50 shadow-lg p-5">
+        <PageMeta @ref="PageMetaRef" Meta="@PageEditorModel.Meta" MetaChanged="@OnMetaChangedAsync" IsPublishing="IsPublishing" OnPublish="@(v => Publish(v))" IsUnpublishing="IsUnpublishing" OnUnpublish="@(v => Redact(v))" />
+        <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            <QuillEditor ContentChanged="@(async (content) => await OnContentChangedAsync(content))" ContentDeltaJSON="@PageEditorModel.ContentDeltaJSON" />
+        </div>
+        @if (IsSaving)
+        {
+            <small class="ms-auto">Sparar... Lämna inte sidan...</small>
+        }
+        else if (ValidationErrors.Keys.Contains("save"))
+        {
+            <small class="ms-auto error">@ValidationErrors["save"][0]</small>
+        }
+        else
+        {
+            @if (LocalSavedAt is null)
+            {
+                <small class="ms-auto">Sparad @(PageEditorModel.Meta.SavedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</small>
+            }
+            else
+            {
+                <small class="ms-auto">Sparad @(LocalSavedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</small>
+            }
+        }
+    </div>
+}

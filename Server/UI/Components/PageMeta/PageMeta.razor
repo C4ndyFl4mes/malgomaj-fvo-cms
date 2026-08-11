@@ -1,0 +1,72 @@
+@inherits PageMetaBase
+@using Server.API.Enums
+
+<form class="flex flex-wrap justify-between gap-4 mb-5">
+    <fieldset class="flex flex-col p-4 flex-1">
+        <legend class="text-xl">Metadata</legend>
+        <div class="flex flex-wrap gap-4">
+            <div class="flex flex-col flex-3">
+                <h3 class="text-lg">Titel</h3>
+                <input type="text"
+                       class="border rounded px-2 py-1"
+                       value="@Meta.Title"
+                       @oninput="@(async e => await HandleMetaFieldChanges("title", e.Value?.ToString() ?? string.Empty))" />
+                @if (ValidationErrors.Keys.Contains("slug"))
+                {
+                    <ul class="error">
+                        @foreach (string error in ValidationErrors["slug"])
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                }
+            </div>
+            <div class="flex flex-col flex-2">
+                <h3 class="text-lg">Nyckelord</h3>
+                <input type="text"
+                       class="border rounded px-2 py-1"
+                       value="@Meta.Keywords"
+                       @oninput="@(async e => await HandleMetaFieldChanges("keywords", e.Value?.ToString() ?? string.Empty))" />
+            </div>
+            <div class="flex flex-col w-full">
+                <h3 class="text-lg">Beskrivning</h3>
+                <textarea class="border rounded px-2 py-1 min-h-24"
+                          @oninput="@(async e => await HandleMetaFieldChanges("description", e.Value?.ToString() ?? string.Empty))">@Meta.Description</textarea>
+            </div>
+        </div>
+    </fieldset>
+    <div class="flex flex-col flex-1 max-w-80 bg-slate-50 p-4">
+        <fieldset class="flex flex-col mt-auto">
+            <legend class="text-lg">Kontroller</legend>
+            <div class="flex gap-x-1">
+                <button type="button"
+                        class="bg-blue-500 text-white py-1 px-4 rounded flex-1 cursor-pointer hover:brightness-95 active:brightness-90 duration-200"
+                        @onclick="@(async () => await HandlePublishToggleAsync())">
+                    @(Meta.IsPublished ? "Tillbaka till utkast" : "Publicera")
+                </button>
+                <button type="button"
+                        class="bg-red-500 text-white py-1 px-4 rounded cursor-pointer hover:brightness-95 active:brightness-90 duration-200">
+                    <img src="/icons/trash.svg" alt="Släng i papperskorgen" class="w-5 h-5" />
+                </button>
+            </div>
+            @if (IsPublishing && !IsUnpublishing)
+            {
+                <small>Publicerar... Lämna inte sidan...</small>
+            }
+            else if (IsUnpublishing && !IsPublishing)
+            {
+                <small>Avpublicerar... Lämna inte sidan...</small>
+            }
+            else if (ValidationErrors.Keys.Contains("pageList"))
+            {
+                <small class="error">@ValidationErrors["pageList"][0]</small>
+            }
+            else if (Meta.IsPublished && !IsPublishing && !IsUnpublishing)
+            {
+                <div class="success text-center">
+                    <p>Sidan är publicerad</p>
+                </div>
+            }
+        </fieldset>
+    </div>
+</form>

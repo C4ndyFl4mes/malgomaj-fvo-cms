@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "css:build": "tailwindcss -i ./server/wwwroot/styles/input.css -o ./server/wwwroot/styles/output.css --minify",
-    "css:dev": "tailwindcss -i ./server/wwwroot/styles/input.css -o ./server/wwwroot/styles/output.css --watch"
+    "css:dev": "tailwindcss -i ./server/wwwroot/styles/input.css -o ./server/wwwroot/styles/output.css --watch",
+    "js:build": "vite build --config vite.config.js",
+    "js:dev": "vite build --watch --config vite.config.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +15,10 @@
   "type": "commonjs",
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "quill": "^2.0.3"
   }
 }

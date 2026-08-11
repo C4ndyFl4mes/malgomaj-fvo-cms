@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Server.API.Data;
+using Server.API.Routes.Internal.Page.Editor;
+using Server.API.Routes.Internal.Page.List;
+using Server.API.Routes.Internal.Page.Save;
 using Server.UI;
 using Server.UI.States;
 
@@ -47,7 +50,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddFastEndpoints().SwaggerDocument();
+
+// States:
 builder.Services.AddScoped<NavigationState>();
+
+// Data services:
+builder.Services.AddScoped<EditorGetData>();
+builder.Services.AddScoped<PageSaveData>();
+builder.Services.AddScoped<PageListGetData>();
 
 #region Authentication and Authorization
 string secretKey = builder.Configuration["secret_key.txt"] ?? throw new InvalidOperationException("Secret key is not configured.");
