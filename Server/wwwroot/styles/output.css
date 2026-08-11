@@ -196,9 +196,6 @@
   .absolute {
     position: absolute;
   }
-  .fixed {
-    position: fixed;
-  }
   .relative {
     position: relative;
   }
@@ -210,9 +207,6 @@
   }
   .bottom-0 {
     bottom: 0px;
-  }
-  .isolate {
-    isolation: isolate;
   }
   .container {
     width: 100%;
@@ -283,9 +277,6 @@
   .mb-5 {
     margin-bottom: calc(var(--spacing) * 5);
   }
-  .block {
-    display: block;
-  }
   .flex {
     display: flex;
   }
@@ -295,14 +286,8 @@
   .hidden {
     display: none;
   }
-  .inline {
-    display: inline;
-  }
   .table {
     display: table;
-  }
-  .table-row {
-    display: table-row;
   }
   .aspect-\[3\/1\] {
     aspect-ratio: 3/1;
@@ -584,9 +569,6 @@
   .italic {
     font-style: italic;
   }
-  .line-through {
-    text-decoration-line: line-through;
-  }
   .underline {
     text-decoration-line: underline;
   }
@@ -601,10 +583,6 @@
   .outline {
     outline-style: var(--tw-outline-style);
     outline-width: 1px;
-  }
-  .invert {
-    --tw-invert: invert(100%);
-    filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
   }
   .filter {
     filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
