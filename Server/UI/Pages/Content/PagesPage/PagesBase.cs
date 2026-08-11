@@ -1,5 +1,6 @@
 using AngleSharp.Text;
 using Microsoft.AspNetCore.Components;
+using Server.API.Exceptions;
 using Server.API.Routes.Internal.Page;
 using Server.API.Routes.Internal.Page.List;
 using Server.UI.Layout;
@@ -11,9 +12,10 @@ public class PagesBase : ComponentBase, IDisposable
 {
     [Inject] protected NavigationState? NavigationState { get; set; }
     [Inject] protected PageListGetData? PageListGetData { get; set; }
+    [Inject] protected ComponentExceptionHandler? ComponentExceptionHandler { get; set; }
 
     protected Guid Id { get; set; } = Guid.NewGuid();
-    protected string Href { get; set; } = string.Empty; // Href för att navigera till editorn, kan sättas baserat på Id eller annan logik.
+    protected string Href { get; set; } = string.Empty; // Href for navigation to the editor, can be set by Id or other logic.
     protected List<PageItem> DraftPages { get; set; } = [];
     protected List<PageItem> PublishedPages { get; set; } = [];
     protected Dictionary<string, string[]> Errors { get; set; } = new();
@@ -47,25 +49,21 @@ public class PagesBase : ComponentBase, IDisposable
             await LoadPages();
     }
 
-    // Laddar in sidor (utkast och publicerade)
+    // Loads in pages (draft and published).
     private async Task LoadPages()
     {
-        if (PageListGetData is null) return;
-
+        if (PageListGetData is null || ComponentExceptionHandler is null) return;
 
         CancellationTokenSource nextCts = new();
         CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
         previousCts?.Cancel();
         previousCts?.Dispose();
 
-        try
+        var response = await ComponentExceptionHandler.RunAsync(async () => await PageListGetData.GetListAsync(nextCts.Token));
+        if (response.IsCanceled) return;
+        if (response.IsSuccess && response.Value is not null)
         {
-            PageListGetResponse response = await PageListGetData.GetListAsync(nextCts.Token);
-            if (nextCts.IsCancellationRequested)
-                return;
-            
-            
-            foreach (PageItem page in response.PageItems)
+            foreach (PageItem page in response.Value.PageItems)
             {
                 if (page.IsPublished)
                 {
@@ -77,26 +75,22 @@ public class PagesBase : ComponentBase, IDisposable
                 }
             }
 
-            PublishedPages = PublishedPages.OrderByDescending(page => page.PublishedAt).ToList();
-            DraftPages = DraftPages.OrderByDescending(page => page.SavedAt).ToList();
+            PublishedPages = PublishedPages.OrderByDescending(p => p.PublishedAt).ToList();
+            DraftPages = DraftPages.OrderByDescending(p => p.SavedAt).ToList();
         }
-        catch (OperationCanceledException)
+        else if (response.Error is not null)
         {
-            Console.WriteLine("Page list loading was canceled.");
-        }
-        catch (Exception ex)
-        {
-            Errors["loadPages"] = [$"Ett fel inträffade vid inläsning av sidor: {ex.Message}"];
+            Errors["loadPages"] = [$"Ett fel inträffade vid inläsning av sidor: {response.Error.Message}"];
         }
     }
 
-    // // Skapar ett utdrag för titel.
+    // Creates an excerpt for title.
     protected string TitleExcerpt(string title)
     {
         string[] words = title.SplitSpaces();
         string excerpt = "";
 
-        foreach(string word in words)
+        foreach (string word in words)
         {
             if ($"{excerpt} {word}".Count() <= 17)
             {
@@ -117,5 +111,6 @@ public class PagesBase : ComponentBase, IDisposable
         CancellationTokenSource? cts = Interlocked.Exchange(ref _cts, null);
         cts?.Cancel();
         cts?.Dispose();
+        Errors.Clear();
     }
 }

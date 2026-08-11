@@ -1,15 +1,18 @@
 using System.Text;
 using FastEndpoints;
 using FastEndpoints.Swagger;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Server.API.Data;
+using Server.API.Exceptions;
 using Server.API.Routes.Internal.Page.Editor;
 using Server.API.Routes.Internal.Page.List;
 using Server.API.Routes.Internal.Page.Save;
 using Server.UI;
 using Server.UI.States;
+using Server.API.Validations;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +53,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddFastEndpoints().SwaggerDocument();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>(); 
+builder.Services.AddScoped<ComponentExceptionHandler>();
 
 // States:
 builder.Services.AddScoped<NavigationState>();
@@ -111,6 +116,8 @@ app.UseWhen(
         );
     }
 );
+
+app.UseMiddleware<GlobalExceptionHandler>();
 
 app.UseHttpsRedirection();
 

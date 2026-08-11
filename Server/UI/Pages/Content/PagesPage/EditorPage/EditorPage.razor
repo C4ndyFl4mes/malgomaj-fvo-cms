@@ -5,10 +5,10 @@
 
 <h1 class="text-3xl">Redigera Sida</h1>
 
-@if (ValidationErrors.Keys.Contains("init"))
+@if (Errors.Keys.Contains("init"))
 {
     <ul class="error">
-        @foreach (string error in ValidationErrors["init"])
+        @foreach (string error in Errors["init"])
         {
             <li>@error</li>
         }
@@ -25,9 +25,9 @@ else if (PageEditorModel is not null)
         {
             <small class="ms-auto">Sparar... Lämna inte sidan...</small>
         }
-        else if (ValidationErrors.Keys.Contains("save"))
+        else if (Errors.Keys.Contains("save"))
         {
-            <small class="ms-auto error">@ValidationErrors["save"][0]</small>
+            <small class="ms-auto error">@Errors["save"][0]</small>
         }
         else
         {

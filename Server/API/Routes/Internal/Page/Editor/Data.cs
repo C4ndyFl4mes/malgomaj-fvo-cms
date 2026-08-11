@@ -10,8 +10,18 @@ public class EditorGetData(AppDbContext ctx)
 {
     public async Task<PageEditorModel> GetAsync(Guid pageId, CancellationToken ct)
     {
-        PageEntity entity = await ctx.Pages.FirstOrDefaultAsync(page => page.Id == pageId, ct) ??
-            throw new NotFoundException("Hittade inte sidan.");
+        PageEntity entity = await ctx.Pages.FirstOrDefaultAsync(page => page.Id == pageId, ct) ?? new()
+            {
+                Id = Guid.NewGuid(),
+                Title = "Namnlös sida",
+                Slug = "namnlos-sida",
+                MetaDescription = string.Empty,
+                MetaKeywords = string.Empty,
+                IsPublished = false,
+                PublishedAt = null,
+                SavedAt = DateTime.UtcNow,
+                ContentDeltaJSON = string.Empty
+            };
         
         return EditorGetMapper.ToResponse(entity);
     }

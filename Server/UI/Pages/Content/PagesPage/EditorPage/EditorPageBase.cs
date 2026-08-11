@@ -15,12 +15,13 @@ public class EditorPageBase : ComponentBase, IDisposable
     [Inject] protected NavigationState? NavigationState { get; set; }
     [Inject] protected EditorGetData? EditorGetData { get; set; }
     [Inject] protected PageSaveData? PageSaveData { get; set; }
+    [Inject] protected ComponentExceptionHandler? ComponentExceptionHandler { get; set; }
 
     [Parameter] public Guid PageId { get; set; }
 
     protected PageEditorModel? PageEditorModel { get; set; }
 
-    protected Dictionary<string, string[]> ValidationErrors { get; set; } = [];
+    protected Dictionary<string, string[]> Errors { get; set; } = [];
     // protected GetImagesResponse? ResponseCache { get; set; } = null; // Cache för att undvika onödiga API-anrop.
     protected bool IsPublishing { get; set; } = false;
     protected bool IsUnpublishing { get; set; } = false;
@@ -28,7 +29,7 @@ public class EditorPageBase : ComponentBase, IDisposable
     protected PageMeta? PageMetaRef { get; set; }
     protected DateTime? LocalSavedAt { get; set; } = null;
 
-    // Debounce- och versionshantering för att optimera sparandet av sidan när flera förändringar sker i snabb följd.
+    // Debounce- and version management for optimizing the saving of the page when multiple changes occur rapidly.
     private static readonly TimeSpan SaveDebounceDelay = TimeSpan.FromSeconds(2);
     private CancellationTokenSource? DebounceCts = null;
     private readonly SemaphoreSlim SaveLock = new(1, 1); // Lås för att säkerställa att endast en save-operation sker åt gången.
@@ -41,7 +42,7 @@ public class EditorPageBase : ComponentBase, IDisposable
     protected override async Task OnInitializedAsync()
     {
         if (NavigationState is null) return;
-        
+
         NavigationState.SetBreadcrumbs([
             new BreadcrumbModel
             {
@@ -70,49 +71,25 @@ public class EditorPageBase : ComponentBase, IDisposable
         }
     }
 
-    // Initialiserar editorn genom att hämta sidans data från API:t. Om sidan inte finns (KeyNotFoundException) skapas en ny PageEditorModel med standardvärden.
+    // Initializing the editor throught fetching the page's data from the API:
     protected async Task InitializePageEditorAsync()
     {
-        if (EditorGetData is null)
-        {
-            ValidationErrors["init"] = ["EditorGetData är inte tillgänglig."];
-            return;
-        }
-        try
-        {
-            CancellationTokenSource nextCts = new();
-            CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
-            previousCts?.Cancel();
-            previousCts?.Dispose();
+        if (EditorGetData is null || ComponentExceptionHandler is null) return;
 
+        CancellationTokenSource nextCts = new();
+        CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
+        previousCts?.Cancel();
+        previousCts?.Dispose();
 
-            PageEditorModel = await EditorGetData.GetAsync(PageId, nextCts.Token);
-        }
-        catch (NotFoundException)
+        var response = await ComponentExceptionHandler.RunAsync(async () => await EditorGetData.GetAsync(PageId, nextCts.Token));
+        if (response.IsCanceled) return;
+        if (response.IsSuccess && response.Value is not null)
         {
-            PageEditorModel = new()
-            {
-                Id = PageId,
-                Meta = new PageMetaModel()
-                {
-                    Id = PageId,
-                    Title = "Namnlös sida",
-                    Slug = "namnlos-sida",
-                    Description = string.Empty,
-                    Keywords = string.Empty,
-                    IsPublished = false,
-                    PublishedAt = null,
-                    SavedAt = DateTime.UtcNow
-                },
-                ContentDeltaJSON = string.Empty
-            };
+            PageEditorModel = response.Value;
         }
-        catch (Exception ex)
+        else if (response.Error is not null)
         {
-            ValidationErrors = new Dictionary<string, string[]>
-            {
-                ["init"] = [$"Det gick inte att ladda sidan: {ex.Message}"]
-            };
+            Errors["init"] = [$"Det gick inte att ladda sidan: {response.Error.Message}"];
         }
     }
 
@@ -131,9 +108,8 @@ public class EditorPageBase : ComponentBase, IDisposable
         return;
     }
 
-    // När metadata eller innehåll förändras, antingen genom PageMeta-komponenten eller TranslationTabs-komponenten,
-    // så köas en sparning av sidan. Om flera förändringar sker inom en kort tidsperiod (2 sekunder)
-    // så kommer endast den senaste att sparas, vilket minskar onödiga API-anrop och förbättrar prestandan.
+    // When meta data or content changes, the saving will be queued so that only the latest change will be sent to the API.
+    // The timing is two seconds.
     private void QueueSave()
     {
         Interlocked.Increment(ref ChangeVersion);
@@ -148,61 +124,66 @@ public class EditorPageBase : ComponentBase, IDisposable
         _ = DebounceThenSaveAsync(next.Token);
     }
 
-    // När debounce-tiden har gått utan att nya förändringar sker, så sparas den senaste versionen av sidan.
-    private async Task DebounceThenSaveAsync(CancellationToken token)
+    // When the debounce time has passed without any new changes, it will save the latest version of the page.
+    private async Task DebounceThenSaveAsync(CancellationToken ct)
     {
-        try
+        if (ComponentExceptionHandler is null) return;
+
+        var response = await ComponentExceptionHandler.RunAsync(async () =>
         {
-            await Task.Delay(SaveDebounceDelay, token);
-            await SaveLatestAsync(token);
-        }
-        catch (OperationCanceledException)
-        {
-            // Förväntat beteende, gör inget.
-        }
+            await Task.Delay(SaveDebounceDelay, ct);
+            await SaveLatestAsync(ct);
+            return true;
+        });
+
+        if (response.IsCanceled) return;
     }
 
-    // Sparar den senaste versionen av sidan.
+    // Saves the latest version of the page.
     protected async Task SaveLatestAsync(CancellationToken ct)
     {
-        if (PageEditorModel is null || PageSaveData is null || Disposed) return;
+        if (PageEditorModel is null || PageSaveData is null || ComponentExceptionHandler is null || Disposed) return;
 
-        await SaveLock.WaitAsync(ct);
-
-        try
-        {
-            int targetVersion = Volatile.Read(ref ChangeVersion);
-            if (targetVersion <= Volatile.Read(ref SavedVersion)) return;
-
-            
-            SavePageResponse response = await PageSaveData.SaveAsync(PageEditorModel, ct);
-
-            PageEditorModel.Meta.SavedAt = response.SavedAt;
-            PageEditorModel.Meta.PublishedAt = response.PublishedAt;
-
-            Volatile.Write(ref SavedVersion, targetVersion);
-            ValidationErrors.Remove("save");
-        }
-        catch (Exception ex)
-        {
-            ValidationErrors["save"] = [$"Det gick inte att spara sidan: {ex.Message}"];
-        }
-        finally
-        {
-            if (PageMetaRef is not null)
+        var response = await ComponentExceptionHandler.RunAsync(
+            async () =>
             {
-                if (IsPublishing)
-                    await PageMetaRef.StopPublishing();
+                await SaveLock.WaitAsync(ct);
 
-                if (IsUnpublishing)
-                    await PageMetaRef.StopRedacting();
+                int targetVersion = Volatile.Read(ref ChangeVersion);
+                if (targetVersion <= Volatile.Read(ref SavedVersion)) return true;
+
+                SavePageResponse saveResponse = await PageSaveData.SaveAsync(PageEditorModel, ct);
+
+                PageEditorModel.Meta.SavedAt = saveResponse.SavedAt;
+                PageEditorModel.Meta.PublishedAt = saveResponse.PublishedAt;
+
+                Volatile.Write(ref SavedVersion, targetVersion);
+                Errors.Remove("save");
+
+                return true;
+            },
+            async () =>
+            {
+                if (PageMetaRef is not null)
+                {
+                    if (IsPublishing)
+                        await PageMetaRef.StopPublishing();
+                    if (IsUnpublishing)
+                        await PageMetaRef.StopRedacting();
+                }
+
+                SaveLock.Release();
+
+                IsSaving = false;
+                LocalSavedAt = DateTime.UtcNow;
+                await InvokeAsync(StateHasChanged);
             }
-            
-            SaveLock.Release();
+        );
 
-            IsSaving = false;
-            LocalSavedAt = DateTime.UtcNow;
-            await InvokeAsync(StateHasChanged);
+        if (response.IsCanceled) return;
+        if (!response.IsSuccess && response.Error is not null)
+        {
+            Errors["save"] = [$"Det gick inte att spara sidan: {response.Error.Message}"];
         }
 
         if (Volatile.Read(ref ChangeVersion) > Volatile.Read(ref SavedVersion))
@@ -232,6 +213,6 @@ public class EditorPageBase : ComponentBase, IDisposable
 
         PageEditorModel = null;
         // ResponseCache = null;
-        ValidationErrors.Clear();
+        Errors.Clear();
     }
 }
