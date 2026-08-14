@@ -13,6 +13,9 @@ using Server.API.Routes.Internal.Page.Save;
 using Server.UI;
 using Server.UI.States;
 using Server.API.Validations;
+using Server.Services;
+using Server.API.Entities;
+using Microsoft.AspNetCore.Identity;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -97,6 +100,50 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 #region WebbApplication 
 
 WebApplication app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+await dbContext.Database.MigrateAsync();
+
+if (!await dbContext.Roles.AnyAsync())
+{
+    RoleEntity adminRole = new()
+    {
+        Id = Guid.NewGuid(),
+        Name = "Administrator",
+        Description = "Har fullständig åtkomst till alla funktioner och inställningar."
+    };
+    RoleEntity editorRole = new()
+    {
+        Id = Guid.NewGuid(),
+        Name = "Editor",
+        Description = "Kan redigera innehåll och hantera vissa inställningar."
+    };
+    dbContext.Roles.AddRange(adminRole, editorRole);
+    await dbContext.SaveChangesAsync();
+}
+
+if (!await dbContext.Users.AnyAsync())
+{
+    string adminEmail = builder.Configuration["admin_email.txt"] ??
+        throw new InvalidOperationException("Admin email is not configured.");
+    string adminPassword = builder.Configuration["admin_password.txt"] ??
+        throw new InvalidOperationException("Admin password is not configured.");
+    string roleId = (await dbContext.Roles.FirstOrDefaultAsync(r => r.Name == "Administrator"))?.Id.ToString() ??
+        throw new InvalidOperationException("Admin role is not configured in the database.");
+
+    UserEntity adminUser = new()
+    {
+        Id = Guid.NewGuid(),
+        Email = adminEmail,
+        PasswordHash = new PasswordHasher<UserEntity>().HashPassword(null!, adminPassword),
+        RoleId = Guid.Parse(roleId),
+        Role = null! // Will automatically be set by EF Core due to the RoleId FK.
+    };
+
+    dbContext.Users.Add(adminUser);
+    await dbContext.SaveChangesAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
