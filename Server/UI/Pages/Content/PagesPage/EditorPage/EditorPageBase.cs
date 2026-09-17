@@ -23,8 +23,8 @@ public class EditorPageBase : ComponentBase, IDisposable
 
     protected Dictionary<string, string[]> Errors { get; set; } = [];
     // protected GetImagesResponse? ResponseCache { get; set; } = null; // Cache för att undvika onödiga API-anrop.
-    protected bool IsPublishing { get; set; } = false;
-    protected bool IsUnpublishing { get; set; } = false;
+    // protected bool IsPublishing { get; set; } = false;
+    // protected bool IsUnpublishing { get; set; } = false;
     protected bool IsSaving { get; set; } = false;
     protected PageMeta? PageMetaRef { get; set; }
     protected DateTime? LocalSavedAt { get; set; } = null;
@@ -164,14 +164,6 @@ public class EditorPageBase : ComponentBase, IDisposable
             },
             async () =>
             {
-                if (PageMetaRef is not null)
-                {
-                    if (IsPublishing)
-                        await PageMetaRef.StopPublishing();
-                    if (IsUnpublishing)
-                        await PageMetaRef.StopRedacting();
-                }
-
                 SaveLock.Release();
 
                 IsSaving = false;
@@ -196,12 +188,31 @@ public class EditorPageBase : ComponentBase, IDisposable
     // When publishing, it will be optimized for the frontend.
     protected async Task Publish(bool v)
     {
-        IsPublishing = v;
+        if (PageMetaRef is null)
+            return;
+
+        if (v)
+        {
+        }
+        else
+        {
+            await PageMetaRef.StopPublishing();
+        }
+
     }
 
     protected async Task Redact(bool v)
     {
-        IsUnpublishing = v;
+        if (PageMetaRef is null)
+            return;
+
+        if (v)
+        {
+        }
+        else
+        {
+            await PageMetaRef.StopRedacting();
+        }
     }
 
     public void Dispose()

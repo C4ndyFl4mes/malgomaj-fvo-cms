@@ -17,7 +17,7 @@
 else if (PageEditorModel is not null)
 {
     <div class="flex flex-col rounded-2xl border-t-2 border-slate-50 shadow-lg p-5">
-        <PageMeta @ref="PageMetaRef" Meta="@PageEditorModel.Meta" MetaChanged="@OnMetaChangedAsync" IsPublishing="IsPublishing" OnPublish="@(v => Publish(v))" IsUnpublishing="IsUnpublishing" OnUnpublish="@(v => Redact(v))" />
+        <PageMeta @ref="PageMetaRef" Meta="@PageEditorModel.Meta" MetaChanged="@OnMetaChangedAsync" OnPublish="@(v => Publish(v))" OnUnpublish="@(v => Redact(v))" />
         <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
             <QuillEditor ContentChanged="@(async (content) => await OnContentChangedAsync(content))" ContentDeltaJSON="@PageEditorModel.ContentDeltaJSON" />
         </div>

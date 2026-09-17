@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components;
-using Server.API.Entities;
 using Server.API.Routes.Internal.Page;
 using Server.API.Routes.Internal.Page.List;
 using Server.Models;
@@ -18,12 +17,11 @@ public class PageMetaBase : ComponentBase, IDisposable
 
     // Events
     [Parameter] public EventCallback<PageMetaModel> MetaChanged { get; set; }
-    [Parameter] public bool IsPublishing { get; set; } = false;
     [Parameter] public EventCallback<bool> OnPublish { get; set; }
-    [Parameter] public bool IsUnpublishing { get; set; } = false;
     [Parameter] public EventCallback<bool> OnUnpublish { get; set; }
 
-
+    protected bool IsUnpublishing { get; set; } = false;
+    protected bool IsPublishing { get; set; } = false;
     protected Dictionary<string, string[]> ValidationErrors { get; set; } = [];
 
 

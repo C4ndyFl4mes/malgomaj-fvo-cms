@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "css:build": "tailwindcss -i ./server/wwwroot/styles/input.css -o ./server/wwwroot/styles/output.css --minify",
-    "css:dev": "tailwindcss -i ./server/wwwroot/styles/input.css -o ./server/wwwroot/styles/output.css --watch",
+    "css:build": "tailwindcss -i ./Server/wwwroot/styles/input.css -o ./Server/wwwroot/styles/output.css --minify",
+    "css:dev": "tailwindcss -i ./Server/wwwroot/styles/input.css -o ./Server/wwwroot/styles/output.css --watch",
     "js:build": "vite build --config vite.config.js",
     "js:dev": "vite build --watch --config vite.config.js"
   },
