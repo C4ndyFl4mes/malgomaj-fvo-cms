@@ -11,10 +11,10 @@
                        class="border rounded px-2 py-1"
                        value="@Meta.Title"
                        @oninput="@(async e => await HandleMetaFieldChanges("title", e.Value?.ToString() ?? string.Empty))" />
-                @if (ValidationErrors.Keys.Contains("slug"))
+                @if (ValidationErrors.Keys.Contains("slugConflict"))
                 {
                     <ul class="error">
-                        @foreach (string error in ValidationErrors["slug"])
+                        @foreach (string error in ValidationErrors["slugConflict"])
                         {
                             <li>@error</li>
                         }
@@ -40,32 +40,45 @@
             <legend class="text-lg">Kontroller</legend>
             <div class="flex gap-x-1">
                 <button type="button"
-                        class="bg-blue-500 text-white py-1 px-4 rounded flex-1 cursor-pointer hover:brightness-95 active:brightness-90 duration-200"
-                        @onclick="@(async () => await HandlePublishToggleAsync())">
-                    @(Meta.IsPublished ? "Tillbaka till utkast" : "Publicera")
+                        class="bg-pink-500 text-white button-1 flex-1 @ApplyDisabledStyling(!Meta.IsPublished)"
+                        @onclick="@(() => OnRedact())"
+                        disabled="@(!Meta.IsPublished)">
+                    <span>Utkast</span>
                 </button>
                 <button type="button"
-                        class="bg-red-500 text-white py-1 px-4 rounded cursor-pointer hover:brightness-95 active:brightness-90 duration-200">
+                        class="bg-blue-500 text-white button-1 flex-3  @ApplyDisabledStyling(!HasUnPublishedChanges && Meta.IsPublished)"
+                        @onclick="@(() => OnPublish())"
+                        disabled="@(!HasUnPublishedChanges && Meta.IsPublished)">
+                    @if(HasUnPublishedChanges)
+                    {
+                        <span>Publ. ändringar</span>
+                    }
+                    else if (Meta.IsPublished)
+                    {
+                        <span title="Sidan är redan publicerad.">Publicerad</span>
+                    }
+                    else
+                    {
+                        <span>Publicera</span>
+                    }
+                </button>
+                <button type="button"
+                        class="bg-red-500 button-1 cursor-pointer"
+                        @onclick="@(() => OnRemove())">
                     <img src="/icons/trash.svg" alt="Släng i papperskorgen" class="w-5 h-5" />
                 </button>
             </div>
-            @if (IsPublishing && !IsUnpublishing)
+            @if (IsPublishing && !IsRedacting)
             {
                 <small>Publicerar... Lämna inte sidan...</small>
             }
-            else if (IsUnpublishing && !IsPublishing)
+            else if (IsRedacting && !IsPublishing)
             {
                 <small>Avpublicerar... Lämna inte sidan...</small>
             }
-            else if (ValidationErrors.Keys.Contains("pageList"))
+            else if (ValidationErrors.Keys.Contains("exception"))
             {
-                <small class="error">@ValidationErrors["pageList"][0]</small>
-            }
-            else if (Meta.IsPublished && !IsPublishing && !IsUnpublishing)
-            {
-                <div class="success text-center">
-                    <p>Sidan är publicerad</p>
-                </div>
+                <small class="error">@ValidationErrors["exception"][0]</small>
             }
         </fieldset>
     </div>

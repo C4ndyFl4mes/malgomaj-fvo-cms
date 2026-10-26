@@ -15,7 +15,7 @@ public class SavePageEndpoint(AppDbContext ctx) : Endpoint<PageEditorModel, Save
     public override async Task<SavePageResponse> ExecuteAsync(PageEditorModel model, CancellationToken ct)
     {
         PageSaveData data = new(ctx);
-        
+
         return await data.SaveAsync(model, ct);
     }
 }

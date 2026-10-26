@@ -16,6 +16,9 @@ using Server.API.Validations;
 using Server.Services;
 using Server.API.Entities;
 using Microsoft.AspNetCore.Identity;
+using Server.API.Routes.Internal.Page.Publish;
+using Server.API.Routes.Internal.Page.Redact;
+using Server.API.Routes.Internal.Page.Remove;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -48,7 +51,7 @@ if (!string.IsNullOrEmpty(dbConnectionString))
 #endregion
 
 // register the AppDbContect with the connection string from configuration.
-builder.Services.AddDbContext<AppDbContext>(options => 
+builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
@@ -56,7 +59,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddFastEndpoints().SwaggerDocument();
-builder.Services.AddValidatorsFromAssemblyContaining<Program>(); 
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddScoped<ComponentExceptionHandler>();
 
 // States:
@@ -66,6 +69,9 @@ builder.Services.AddScoped<NavigationState>();
 builder.Services.AddScoped<EditorGetData>();
 builder.Services.AddScoped<PageSaveData>();
 builder.Services.AddScoped<PageListGetData>();
+builder.Services.AddScoped<PagePublishData>();
+builder.Services.AddScoped<PageRedactData>();
+builder.Services.AddScoped<PageRemoveData>();
 
 #region Authentication and Authorization
 string secretKey = builder.Configuration["secret_key.txt"] ?? throw new InvalidOperationException("Secret key is not configured.");

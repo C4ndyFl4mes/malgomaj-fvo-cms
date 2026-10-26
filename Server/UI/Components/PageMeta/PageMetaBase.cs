@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components;
 using Server.API.Routes.Internal.Page;
 using Server.API.Routes.Internal.Page.List;
 using Server.Models;
+using Server.API.Exceptions;
 // using Server.API.Routes.Page.GET.List;
 
 namespace Server.UI.Components.PageMeta;
@@ -12,37 +13,48 @@ namespace Server.UI.Components.PageMeta;
 public class PageMetaBase : ComponentBase, IDisposable
 {
     [Inject] protected PageListGetData? PageListGetData { get; set; }
+    [Inject] protected ComponentExceptionHandler? ComponentExceptionHandler { get; set; }
 
-    [Parameter] public required PageMetaModel Meta { get; set; } = default!;
+    [Parameter] public required PageMetaModel Meta { get; set; }
 
     // Events
-    [Parameter] public EventCallback<PageMetaModel> MetaChanged { get; set; }
-    [Parameter] public EventCallback<bool> OnPublish { get; set; }
-    [Parameter] public EventCallback<bool> OnUnpublish { get; set; }
+    [Parameter] public EventCallback<PageMetaModel> MetaChanged { get; set; } // Invokes whenever a field value is changed.
+    [Parameter] public EventCallback OnPublishing { get; set; } // Invokes by the publish button.
+    [Parameter] public EventCallback OnRedacting { get; set; } // Invokes by the redact button.
+    [Parameter] public EventCallback OnRemoving { get; set; } // Invokes by the delete button.
 
-    protected bool IsUnpublishing { get; set; } = false;
-    protected bool IsPublishing { get; set; } = false;
+    public bool IsPublishing { get; set; } = false;
+    public bool IsRedacting { get; set; } = false;
     protected Dictionary<string, string[]> ValidationErrors { get; set; } = [];
-
+    protected bool HasUnPublishedChanges { get; set; } = false;
 
     private CancellationTokenSource? _cts = null;
 
-    public async Task StopPublishing()
+    public void DetermineUnPublishedChanges(DateTime savedAt)
     {
-        await HandleOnPublish();
+        Console.WriteLine($"SavedAt: {savedAt} and PublishedAt: {Meta.PublishedAt}");
+        HasUnPublishedChanges = Meta.PublishedAt is not null && savedAt > Meta.PublishedAt;
     }
 
-    public async Task StopRedacting()
+    // Used by the Publish-method in EditorPageBase.
+    public void ForceHasUnPublishedChangesToFalse()
     {
-        await HandleOnUnpublish();
+        HasUnPublishedChanges = false;
     }
 
+    protected string ApplyDisabledStyling(bool doIt)
+    {
+        return doIt ? "opacity-50 cursor-not-allowed" : "cursor-pointer";
+    }
+
+    // Invokes the event that will cause a queued saved.
     protected async Task HandleMetaChange()
     {
         Meta.Slug = Slugify(Meta.Title);
-        await MetaChanged.InvokeAsync(Meta);
+        await MetaChanged.InvokeAsync();
     }
 
+    // To easily set the values from the fields.
     protected async Task HandleMetaFieldChanges(string field, string value)
     {
         switch (field)
@@ -63,71 +75,64 @@ public class PageMetaBase : ComponentBase, IDisposable
         await HandleMetaChange();
     }
 
-    protected async Task HandleOnPublish()
+    // Invokes the event that will try to publish the page.
+    protected async Task OnPublish()
     {
-        IsPublishing = !IsPublishing;
-        await OnPublish.InvokeAsync(IsPublishing);
+        IsRedacting = false;
+        IsPublishing = true;
+
+        if (!await CheckSlugConflictAsync())
+            await OnPublishing.InvokeAsync();
     }
 
-    protected async Task HandleOnUnpublish()
+    // Invokes the event that will try to redact the page.
+    protected async Task OnRedact()
     {
-        IsUnpublishing = !IsUnpublishing;
-        await OnUnpublish.InvokeAsync(IsUnpublishing);
+        IsPublishing = false;
+        IsRedacting = true;
+        await OnRedacting.InvokeAsync();
     }
 
-    protected async Task HandlePublishToggleAsync()
+    // Invokes the event that will try to remove the page and redirect the user.
+    protected async Task OnRemove()
     {
-        if (!Meta.IsPublished)
-            await HandleOnPublish();
-        if (Meta.IsPublished)
-            await HandleOnUnpublish();
+        await OnRemoving.InvokeAsync();
+    }
 
-        if (PageListGetData is null) return;
+    protected async Task<bool> CheckSlugConflictAsync()
+    {
+        if (PageListGetData is null || ComponentExceptionHandler is null) return false;
 
         CancellationTokenSource nextCts = new();
         CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
         previousCts?.Cancel();
         previousCts?.Dispose();
 
-        try
-        {
-            PageListGetResponse response = await PageListGetData.GetListAsync(nextCts.Token);
+        bool slugConflict = false;
 
-            if (nextCts.IsCancellationRequested)
+        var exception = await ComponentExceptionHandler.RunAsync(
+            async () =>
             {
-                if (!Meta.IsPublished)
-                    await HandleOnPublish();
-                if (Meta.IsPublished)
-                    await HandleOnUnpublish();
+                PageListGetResponse response = await PageListGetData.GetListAsync(nextCts.Token);
 
-                return;
-            }
-
-            if (Meta.IsPublished)
-            {
-                Meta.IsPublished = false;
-            }
-            else
-            {
-                bool slugConflict = response.PageItems.Any(p => p.PageId != Meta.Id && p.IsPublished && !string.IsNullOrWhiteSpace(Meta.Slug) && p.Slug == Meta.Slug);
+                slugConflict = response.PageItems.Any(p => p.PageId != Meta.Id && p.IsPublished && !string.IsNullOrWhiteSpace(Meta.Slug) && p.Slug == Meta.Slug);
                 if (slugConflict)
                 {
-                    ValidationErrors["slug"] = ["En annan publicerad sida har samma slug. Vänligen ändra slug innan du publicerar."];
-                    return;
+                    IsPublishing = false;
+                    ValidationErrors["slugConflict"] = ["En annan publicerad sida har samma titel. Vänligen ändra titeln innan du publicerar."];
                 }
-                Meta.IsPublished = true;
-                ValidationErrors.Remove("slug");
+
+                return true;
             }
-            await HandleMetaChange();
-        }
-        catch (OperationCanceledException)
+         );
+
+        if (exception.IsCanceled) return false;
+        if (!exception.IsSuccess && exception.Error is not null)
         {
-            // Förväntat beteende, gör inget.
+            ValidationErrors["exception"] = [exception.Error.Message];
         }
-        catch (Exception ex)
-        {
-            ValidationErrors["pageList"] = [$"Kunde inte läsa in alla sidor: {ex.Message}"];
-        }
+
+        return slugConflict;
     }
 
     private static string Slugify(string input)

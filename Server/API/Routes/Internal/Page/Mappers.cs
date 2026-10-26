@@ -21,7 +21,7 @@ public static class EditorGetMapper
                 Keywords = entity.MetaKeywords,
                 Description = entity.MetaDescription
             },
-            ContentDeltaJSON = entity.ContentDeltaJSON
+            ContentJSON = entity.ContentDeltaJSON
         };
     }
 }
@@ -35,11 +35,12 @@ public static class SavePageMapper
             Id = model.Id,
             IsPublished = model.Meta.IsPublished,
             SavedAt = model.Meta.SavedAt,
+            PublishedAt = model.Meta.PublishedAt,
             Title = model.Meta.Title,
             Slug = model.Meta.Slug,
             MetaKeywords = model.Meta.Keywords ?? string.Empty,
             MetaDescription = model.Meta.Description ?? string.Empty,
-            ContentDeltaJSON = model.ContentDeltaJSON
+            ContentDeltaJSON = model.ContentJSON
         };
     }
 
@@ -70,6 +71,23 @@ public static class PageListGetMapper
                 PublishedAt = entity.PublishedAt,
                 SavedAt = entity.SavedAt
             }).ToList()
+        };
+    }
+}
+
+public static class PublishPageMapper
+{
+    public static PublishedPageEntity ToEntity(PageEditorModel model)
+    {
+        return new PublishedPageEntity
+        {
+            Id = model.Id,
+            PublishedAt = model.Meta.PublishedAt,
+            Title = model.Meta.Title,
+            ContentJSON = model.ContentJSON,
+            Slug = model.Meta.Slug,
+            MetaDescription = model.Meta.Description ?? string.Empty,
+            MetaKeywords = model.Meta.Keywords ?? string.Empty
         };
     }
 }

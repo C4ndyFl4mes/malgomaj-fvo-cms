@@ -19,6 +19,24 @@ li:has(>a.active):hover {
     background-color: oklch(88.2% 0.059 254.128);
 }
 
+
+.button-1 {
+    transition-duration: 200ms;
+
+    padding-block: 0.25rem;
+    padding-inline: 1rem;
+    border-radius: 0.25rem;
+}
+
+.button-1:hover {
+    filter: brightness(95%);
+}
+
+.button-1:active {
+    filter: brightness(90%);
+}
+
+
 .submenu-wrapper {
     overflow: hidden;
     max-height: 0;

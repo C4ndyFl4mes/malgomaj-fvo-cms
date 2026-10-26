@@ -27,3 +27,19 @@ public record PageItem
     public DateTime? PublishedAt { get; set; }
     public required DateTime SavedAt { get; set; }
 }
+
+// The following three records are only used in their respective endpoint class.
+public record PublishPageResponse
+{
+    public DateTime? PublishedAt { get; set; }
+}
+
+public record RemovePageResponse
+{
+    public required string Message { get; set; }
+}
+
+public record RedactPageResponse
+{
+    public required string Message { get; set; }
+}

@@ -68,7 +68,7 @@ namespace Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("ContentHTML")
+                    b.Property<string>("ContentJSON")
                         .IsRequired()
                         .HasColumnType("text");
 
