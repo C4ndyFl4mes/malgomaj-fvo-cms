@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Server.API.Data;
 using Server.API.Entities;
@@ -7,10 +9,14 @@ using Server.Services;
 
 namespace Server.API.Routes.Internal.Page.Publish;
 
-public class PagePublishData(AppDbContext ctx)
+public class PagePublishData(AppDbContext ctx, IAuthorizationService authorization)
 {
-    public async Task<DateTime?> PublishAsync(PageEditorModel model, CancellationToken ct)
+    public async Task<DateTime?> PublishAsync(ClaimsPrincipal user, PageEditorModel model, CancellationToken ct)
     {
+        AuthorizationResult result = await authorization.AuthorizeAsync(user, "InternalUsers");
+        if (!result.Succeeded)
+            throw new UnauthorizedException("Du har inte tillgång till denna operation.");
+
         if (!DeltaToNestedNormalizationService.IsCorrectlyNormalized(model.ContentJSON))
             throw new BadRequestException("Innehållet är inte korrekt formaterad.");
 

@@ -1,15 +1,14 @@
 using FastEndpoints;
-using Server.API.Data;
 using Server.API.Exceptions;
 
 namespace Server.API.Routes.Internal.Page.Remove;
 
-public class PageRemoveEndpoint(AppDbContext ctx) : EndpointWithoutRequest<RemovePageResponse>
+public class PageRemoveEndpoint(PageRemoveData data) : EndpointWithoutRequest<RemovePageResponse>
 {
     public override void Configure()
     {
         Delete("/api/pages/{pageId}");
-        AllowAnonymous();
+        Policies("InternalUsers");
     }
 
     public override async Task<RemovePageResponse> ExecuteAsync(CancellationToken ct)
@@ -20,8 +19,7 @@ public class PageRemoveEndpoint(AppDbContext ctx) : EndpointWithoutRequest<Remov
         if(!Guid.TryParse(pageId, out Guid id))
             throw new BadRequestException("Unable to parse pageId as Guid.");
         
-        PageRemoveData data = new(ctx);
-        await data.RemoveAsync(id, ct);
+        await data.RemoveAsync(HttpContext.User, id, ct);
 
         return new()
         {

@@ -1,20 +1,17 @@
 using FastEndpoints;
-using Server.API.Data;
 
 namespace Server.API.Routes.Internal.Page.List;
 
-public class PageListGetEndpoint(AppDbContext ctx) : EndpointWithoutRequest<PageListGetResponse>
+public class PageListGetEndpoint(PageListGetData data) : EndpointWithoutRequest<PageListGetResponse>
 {
     public override void Configure()
     {
         Get("/api/pages");
-        AllowAnonymous();
+        Policies("InternalUsers");
     }
 
     public override async Task<PageListGetResponse> ExecuteAsync(CancellationToken ct)
     {
-        PageListGetData data = new(ctx);
-
-        return await data.GetListAsync(ct);
+        return await data.GetListAsync(HttpContext.User, ct);
     }
 }

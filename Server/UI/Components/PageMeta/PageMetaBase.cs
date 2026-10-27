@@ -6,14 +6,16 @@ using Server.API.Routes.Internal.Page;
 using Server.API.Routes.Internal.Page.List;
 using Server.Models;
 using Server.API.Exceptions;
+using Microsoft.AspNetCore.Components.Authorization;
 // using Server.API.Routes.Page.GET.List;
 
 namespace Server.UI.Components.PageMeta;
 
 public class PageMetaBase : ComponentBase, IDisposable
 {
-    [Inject] protected PageListGetData? PageListGetData { get; set; }
-    [Inject] protected ComponentExceptionHandler? ComponentExceptionHandler { get; set; }
+    [Inject] protected PageListGetData PageListGetData { get; set; } = default!;
+    [Inject] protected ComponentExceptionHandler ComponentExceptionHandler { get; set; } = default!;
+    [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
     [Parameter] public required PageMetaModel Meta { get; set; }
 
@@ -32,7 +34,7 @@ public class PageMetaBase : ComponentBase, IDisposable
 
     public void DetermineUnPublishedChanges(DateTime savedAt)
     {
-        Console.WriteLine($"SavedAt: {savedAt} and PublishedAt: {Meta.PublishedAt}");
+        // Console.WriteLine($"SavedAt: {savedAt} and PublishedAt: {Meta.PublishedAt}");
         HasUnPublishedChanges = Meta.PublishedAt is not null && savedAt > Meta.PublishedAt;
     }
 
@@ -101,8 +103,6 @@ public class PageMetaBase : ComponentBase, IDisposable
 
     protected async Task<bool> CheckSlugConflictAsync()
     {
-        if (PageListGetData is null || ComponentExceptionHandler is null) return false;
-
         CancellationTokenSource nextCts = new();
         CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
         previousCts?.Cancel();
@@ -113,7 +113,9 @@ public class PageMetaBase : ComponentBase, IDisposable
         var exception = await ComponentExceptionHandler.RunAsync(
             async () =>
             {
-                PageListGetResponse response = await PageListGetData.GetListAsync(nextCts.Token);
+
+                AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                PageListGetResponse response = await PageListGetData.GetListAsync(state.User, nextCts.Token);
 
                 slugConflict = response.PageItems.Any(p => p.PageId != Meta.Id && p.IsPublished && !string.IsNullOrWhiteSpace(Meta.Slug) && p.Slug == Meta.Slug);
                 if (slugConflict)

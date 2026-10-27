@@ -1,9 +1,8 @@
 using FastEndpoints;
-using Server.API.Data;
 
 namespace Server.API.Routes.Internal.Authentication.SignIn;
 
-public class SignInEndpoint(IConfiguration config, AppDbContext ctx) : Endpoint<UserModel, AuthenticationResponse>
+public class SignInEndpoint(SignInData data) : Endpoint<UserModel, AuthenticationResponse>
 {
     public override void Configure()
     {
@@ -13,8 +12,6 @@ public class SignInEndpoint(IConfiguration config, AppDbContext ctx) : Endpoint<
 
     public override async Task<AuthenticationResponse> ExecuteAsync(UserModel model, CancellationToken ct)
     {
-        SignInData data = new(config, ctx);
-
         Token token = await data.SignIn(model, ct);
 
         HttpContext.Response.Cookies.Append("accessToken", token.AccessToken, new CookieOptions

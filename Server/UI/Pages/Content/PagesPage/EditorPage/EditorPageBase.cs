@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Server.API.Exceptions;
 using Server.API.Routes.Internal.Page;
 using Server.API.Routes.Internal.Page.Editor;
@@ -16,14 +17,15 @@ namespace Server.UI.Pages.Content.PagesPage.EditorPage;
 
 public class EditorPageBase : ComponentBase, IDisposable
 {
-    [Inject] protected NavigationState? NavigationState { get; set; }
-    [Inject] protected EditorGetData? EditorGetData { get; set; }
-    [Inject] protected PageSaveData? PageSaveData { get; set; }
-    [Inject] protected PagePublishData? PagePublishData { get; set; }
-    [Inject] protected PageRedactData? PageRedactData { get; set; }
-    [Inject] protected PageRemoveData? PageRemoveData { get; set; }
-    [Inject] protected ComponentExceptionHandler? ComponentExceptionHandler { get; set; }
-    [Inject] protected NavigationManager? NavigationManager { get; set; }
+    [Inject] protected NavigationState NavigationState { get; set; } = default!;
+    [Inject] protected EditorGetData EditorGetData { get; set; } = default!;
+    [Inject] protected PageSaveData PageSaveData { get; set; } = default!;
+    [Inject] protected PagePublishData PagePublishData { get; set; } = default!;
+    [Inject] protected PageRedactData PageRedactData { get; set; } = default!;
+    [Inject] protected PageRemoveData PageRemoveData { get; set; } = default!;
+    [Inject] protected ComponentExceptionHandler ComponentExceptionHandler { get; set; } = default!;
+    [Inject] protected NavigationManager NavigationManager { get; set; } = default!;
+    [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
     [Parameter] public Guid PageId { get; set; }
 
@@ -32,7 +34,7 @@ public class EditorPageBase : ComponentBase, IDisposable
     protected Dictionary<string, string[]> Errors { get; set; } = [];
     // protected GetImagesResponse? ResponseCache { get; set; } = null; // Cache för att undvika onödiga API-anrop.
     protected bool IsSaving { get; set; } = false;
-    protected PageMeta? PageMetaRef { get; set; }
+    protected PageMeta PageMetaRef { get; set; } = default!;
     protected DateTime? LocalSavedAt { get; set; } = null;
 
     // Debounce- and version management for optimizing the saving of the page when multiple changes occur rapidly.
@@ -45,8 +47,6 @@ public class EditorPageBase : ComponentBase, IDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        if (NavigationState is null) return;
-
         NavigationState.SetBreadcrumbs([
             new BreadcrumbModel
             {
@@ -78,14 +78,14 @@ public class EditorPageBase : ComponentBase, IDisposable
     // Initializing the editor throught fetching the page's data from the API:
     protected async Task InitializePageEditorAsync()
     {
-        if (EditorGetData is null || ComponentExceptionHandler is null) return;
-
         CancellationTokenSource nextCts = new();
         CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
         previousCts?.Cancel();
         previousCts?.Dispose();
 
-        var exception = await ComponentExceptionHandler.RunAsync(async () => await EditorGetData.GetAsync(PageId, nextCts.Token));
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var exception = await ComponentExceptionHandler.RunAsync(async () => await EditorGetData.GetAsync(state.User, PageId, nextCts.Token));
         if (exception.IsCanceled) return;
         if (exception.IsSuccess && exception.Value is not null)
         {
@@ -131,8 +131,6 @@ public class EditorPageBase : ComponentBase, IDisposable
     // When the debounce time has passed without any new changes, it will save the latest version of the page.
     private async Task DebounceThenSaveAsync(CancellationToken ct)
     {
-        if (ComponentExceptionHandler is null) return;
-
         var exception = await ComponentExceptionHandler.RunAsync(
             async () =>
             {
@@ -148,7 +146,7 @@ public class EditorPageBase : ComponentBase, IDisposable
     // Saves the latest version of the page.
     protected async Task SaveLatestAsync(CancellationToken ct)
     {
-        if (PageMetaRef is null || PageEditorModel is null || PageSaveData is null || ComponentExceptionHandler is null || _dispose) return;
+        if (PageEditorModel is null || _dispose) return;
 
         var exception = await ComponentExceptionHandler.RunAsync(
             async () =>
@@ -158,7 +156,8 @@ public class EditorPageBase : ComponentBase, IDisposable
                 int targetVersion = Volatile.Read(ref _changeVersion);
                 if (targetVersion <= Volatile.Read(ref _savedVersion)) return true;
 
-                SavePageResponse saveResponse = await PageSaveData.SaveAsync(PageEditorModel, ct);
+                AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                SavePageResponse saveResponse = await PageSaveData.SaveAsync(state.User, PageEditorModel, ct);
 
                 PageEditorModel.Meta.SavedAt = saveResponse.SavedAt;
                 PageMetaRef.DetermineUnPublishedChanges(saveResponse.SavedAt);
@@ -192,8 +191,7 @@ public class EditorPageBase : ComponentBase, IDisposable
     // Publishes and then saves the newly changed PublishedAt and IsPublished. It also forces unpublished changes to be false.
     protected async Task PublishAsync()
     {
-        if (PageMetaRef is null || PageEditorModel is null || ComponentExceptionHandler is null || PagePublishData is null || PageSaveData is null)
-            return;
+        if (PageEditorModel is null) return;
 
         CancellationTokenSource nextCts = new();
         CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
@@ -215,9 +213,10 @@ public class EditorPageBase : ComponentBase, IDisposable
                         ContentJSON = DeltaToNestedNormalizationService.Normalize(PageEditorModel.ContentJSON)
                     };
 
-                    PageEditorModel.Meta.PublishedAt = await PagePublishData.PublishAsync(publishModel, nextCts.Token);
+                    AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                    PageEditorModel.Meta.PublishedAt = await PagePublishData.PublishAsync(state.User, publishModel, nextCts.Token);
 
-                    SavePageResponse saveResponse = await PageSaveData.SaveAsync(PageEditorModel, nextCts.Token);
+                    SavePageResponse saveResponse = await PageSaveData.SaveAsync(state.User, PageEditorModel, nextCts.Token);
                     PageMetaRef.ForceHasUnPublishedChangesToFalse();
 
                     return true;
@@ -241,8 +240,7 @@ public class EditorPageBase : ComponentBase, IDisposable
     // Redacts and then saves the IsPublished and PublishedAt changes.
     protected async Task RedactAsync()
     {
-        if (PageMetaRef is null || PageEditorModel is null || ComponentExceptionHandler is null || PageRedactData is null || PageSaveData is null)
-            return;
+        if (PageEditorModel is null) return;
 
         CancellationTokenSource nextCts = new();
         CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
@@ -252,11 +250,12 @@ public class EditorPageBase : ComponentBase, IDisposable
         var exception = await ComponentExceptionHandler.RunAsync(
             async () =>
             {
-                if (await PageRedactData.RedactAsync(PageEditorModel.Id, nextCts.Token))
+                AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                if (await PageRedactData.RedactAsync(state.User, PageEditorModel.Id, nextCts.Token))
                 {
                     PageEditorModel.Meta.IsPublished = false;
                     PageEditorModel.Meta.PublishedAt = null;
-                    SavePageResponse saveResponse = await PageSaveData.SaveAsync(PageEditorModel, nextCts.Token);
+                    SavePageResponse saveResponse = await PageSaveData.SaveAsync(state.User, PageEditorModel, nextCts.Token);
                     PageMetaRef.DetermineUnPublishedChanges(saveResponse.SavedAt);
                     return true;
                 }
@@ -279,7 +278,7 @@ public class EditorPageBase : ComponentBase, IDisposable
     // Removes the page and redirects the user on success.
     protected async Task RemoveAsync()
     {
-        if (PageRemoveData is null || PageEditorModel is null || ComponentExceptionHandler is null || PageMetaRef is null || NavigationManager is null) return;
+        if (PageEditorModel is null) return;
 
         CancellationTokenSource nextCts = new();
         CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
@@ -291,7 +290,8 @@ public class EditorPageBase : ComponentBase, IDisposable
             {
                 if (!IsSaving && !PageMetaRef.IsPublishing && !PageMetaRef.IsRedacting)
                 {
-                    await PageRemoveData.RemoveAsync(PageEditorModel.Id, nextCts.Token);
+                    AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                    await PageRemoveData.RemoveAsync(state.User, PageEditorModel.Id, nextCts.Token);
                     return true;
                 }
                 else

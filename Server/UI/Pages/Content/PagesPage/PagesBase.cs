@@ -1,5 +1,6 @@
 using AngleSharp.Text;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Server.API.Exceptions;
 using Server.API.Routes.Internal.Page;
 using Server.API.Routes.Internal.Page.List;
@@ -10,9 +11,10 @@ namespace Server.UI.Pages.Content.PagesPage;
 
 public class PagesBase : ComponentBase, IDisposable
 {
-    [Inject] protected NavigationState? NavigationState { get; set; }
-    [Inject] protected PageListGetData? PageListGetData { get; set; }
-    [Inject] protected ComponentExceptionHandler? ComponentExceptionHandler { get; set; }
+    [Inject] protected NavigationState NavigationState { get; set; } = default!;
+    [Inject] protected PageListGetData PageListGetData { get; set; } = default!;
+    [Inject] protected ComponentExceptionHandler ComponentExceptionHandler { get; set; } = default!;
+    [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
     protected Guid Id { get; set; } = Guid.NewGuid();
     protected string Href { get; set; } = string.Empty; // Href for navigation to the editor, can be set by Id or other logic.
@@ -24,8 +26,6 @@ public class PagesBase : ComponentBase, IDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        if (NavigationState is null) return;
-
         NavigationState.SetBreadcrumbs([
             new BreadcrumbModel
             {
@@ -45,21 +45,20 @@ public class PagesBase : ComponentBase, IDisposable
 
         Href = $"/admin/content/pages/edit/{Id}";
 
-        if (PageListGetData is not null)
-            await LoadPages();
+        await LoadPages();
     }
 
     // Loads in pages (draft and published).
     private async Task LoadPages()
     {
-        if (PageListGetData is null || ComponentExceptionHandler is null) return;
-
         CancellationTokenSource nextCts = new();
         CancellationTokenSource? previousCts = Interlocked.Exchange(ref _cts, nextCts);
         previousCts?.Cancel();
         previousCts?.Dispose();
 
-        var response = await ComponentExceptionHandler.RunAsync(async () => await PageListGetData.GetListAsync(nextCts.Token));
+        AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var response = await ComponentExceptionHandler.RunAsync(async () => await PageListGetData.GetListAsync(state.User, nextCts.Token));
         if (response.IsCanceled) return;
         if (response.IsSuccess && response.Value is not null)
         {

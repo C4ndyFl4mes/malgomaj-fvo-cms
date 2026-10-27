@@ -12,13 +12,13 @@ using Server.API.Routes.Internal.Page.List;
 using Server.API.Routes.Internal.Page.Save;
 using Server.UI;
 using Server.UI.States;
-using Server.API.Validations;
-using Server.Services;
 using Server.API.Entities;
 using Microsoft.AspNetCore.Identity;
 using Server.API.Routes.Internal.Page.Publish;
 using Server.API.Routes.Internal.Page.Redact;
 using Server.API.Routes.Internal.Page.Remove;
+using Server.API.Routes.Internal.Authentication.SignUp;
+using Server.API.Routes.Internal.Authentication.SignIn;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -66,6 +66,8 @@ builder.Services.AddScoped<ComponentExceptionHandler>();
 builder.Services.AddScoped<NavigationState>();
 
 // Data services:
+builder.Services.AddScoped<SignInData>();
+builder.Services.AddScoped<SignUpData>();
 builder.Services.AddScoped<EditorGetData>();
 builder.Services.AddScoped<PageSaveData>();
 builder.Services.AddScoped<PageListGetData>();
@@ -101,6 +103,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("InternalUsers", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Administrator", "Editor");
+    })
+    .AddPolicy("AdministratorsOnly", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Administrator");
+    });
+
 #endregion
 
 #region WebbApplication 

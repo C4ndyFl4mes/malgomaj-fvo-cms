@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Server.API.Data;
@@ -6,10 +8,14 @@ using Server.API.Exceptions;
 
 namespace Server.API.Routes.Internal.Authentication.SignUp;
 
-public class SignUpData(AppDbContext ctx)
+public class SignUpData(AppDbContext ctx, IAuthorizationService authorization)
 {
-    public async Task<AuthenticationResponse> SignUp(UserModel model, CancellationToken ct)
+    public async Task<AuthenticationResponse> SignUp(ClaimsPrincipal user, UserModel model, CancellationToken ct)
     {
+        AuthorizationResult result = await authorization.AuthorizeAsync(user, "AdministratorsOnly");
+        if (!result.Succeeded)
+            throw new UnauthorizedException("Du har inte tillgång till denna operation.");
+
         if (await ctx.Users.AnyAsync(u => u.Email == model.Email, ct))
             throw new BadRequestException("En användare med den E-postadressen finns redan.");
         
