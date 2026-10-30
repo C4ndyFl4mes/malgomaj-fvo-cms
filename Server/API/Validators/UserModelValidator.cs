@@ -2,7 +2,7 @@ using FastEndpoints;
 using FluentValidation;
 using Server.API.Routes.Internal.Authentication;
 
-namespace Server.API.Validations;
+namespace Server.API.Validators;
 
 public class UserModelValidator : Validator<UserModel>
 {

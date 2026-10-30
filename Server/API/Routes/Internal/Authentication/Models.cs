@@ -1,4 +1,6 @@
+using System.Text.Json.Serialization;
 using FastEndpoints;
+using Server.API.Exceptions;
 
 namespace Server.API.Routes.Internal.Authentication;
 
@@ -23,5 +25,5 @@ public record ClientCallResponse<T>
 {
     public bool IsSuccess { get; set; }
     public T? Data { get; set; }
-    public ErrorResponse? Error { get; set; }
+    public ExceptionResponse? Error { get; set; }
 }

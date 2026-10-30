@@ -19,6 +19,8 @@ using Server.API.Routes.Internal.Page.Redact;
 using Server.API.Routes.Internal.Page.Remove;
 using Server.API.Routes.Internal.Authentication.SignUp;
 using Server.API.Routes.Internal.Authentication.SignIn;
+using Server.API.Routes.Internal.Authentication;
+using Server.API.Validators;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -74,6 +76,9 @@ builder.Services.AddScoped<PageListGetData>();
 builder.Services.AddScoped<PagePublishData>();
 builder.Services.AddScoped<PageRedactData>();
 builder.Services.AddScoped<PageRemoveData>();
+
+// Validator services:
+builder.Services.AddScoped<IValidator<UserModel>, UserModelValidator>();
 
 #region Authentication and Authorization
 string secretKey = builder.Configuration["secret_key.txt"] ?? throw new InvalidOperationException("Secret key is not configured.");

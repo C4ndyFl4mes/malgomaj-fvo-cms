@@ -7,6 +7,13 @@ public record ErrorResponse
     public string? TraceId { get; init; }
 }
 
+public record ExceptionResponse
+{
+    public int StatusCode { get; set; }
+    public string? Type { get; set; }
+    public string? Detail { get; set; }
+}
+
 public record ValidationErrorResponse
 {
     public int StatusCode { get; init; } = StatusCodes.Status400BadRequest;
