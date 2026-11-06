@@ -148,43 +148,61 @@ public class EditorPageBase : ComponentBase, IDisposable
     {
         if (PageEditorModel is null || _dispose) return;
 
-        var exception = await ComponentExceptionHandler.RunAsync(
-            async () =>
+        while (!ct.IsCancellationRequested && !_dispose)
+        {
+            bool lockAcquired = false;
+
+            var exception = await ComponentExceptionHandler.RunAsync(
+                async () =>
+                {
+                    await _saveLock.WaitAsync(ct);
+                    lockAcquired = true;
+
+                    int targetVersion = Volatile.Read(ref _changeVersion);
+                    if (targetVersion <= Volatile.Read(ref _savedVersion))
+                        return false;
+
+                    AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+                    SavePageResponse saveResponse = await PageSaveData.SaveAsync(state.User, PageEditorModel, ct);
+
+                    PageEditorModel.Meta.SavedAt = saveResponse.SavedAt;
+                    PageMetaRef.DetermineUnPublishedChanges(saveResponse.SavedAt);
+                    Volatile.Write(ref _savedVersion, targetVersion);
+                    Errors.Remove("save");
+
+                    return true;
+                },
+                () =>
+                {
+                    if (lockAcquired)
+                        _saveLock.Release();
+
+                    return Task.CompletedTask;
+                });
+            
+            if (exception.IsCanceled)
+                return;
+            
+            if (!exception.IsSuccess)
             {
-                await _saveLock.WaitAsync(ct);
-
-                int targetVersion = Volatile.Read(ref _changeVersion);
-                if (targetVersion <= Volatile.Read(ref _savedVersion)) return true;
-
-                AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-                SavePageResponse saveResponse = await PageSaveData.SaveAsync(state.User, PageEditorModel, ct);
-
-                PageEditorModel.Meta.SavedAt = saveResponse.SavedAt;
-                PageMetaRef.DetermineUnPublishedChanges(saveResponse.SavedAt);
-                Volatile.Write(ref _savedVersion, targetVersion);
-                Errors.Remove("save");
-
-                return true;
-            },
-            async () =>
-            {
-                _saveLock.Release();
-
+                if (exception.Error is not null)
+                    Errors["save"] = [$"Det gick inte att spara sidan: {exception.Error.Message}"];
+                
                 IsSaving = false;
-                LocalSavedAt = DateTime.UtcNow;
                 await InvokeAsync(StateHasChanged);
+                return; // If the save fails, it will not try to do another save.
             }
-        );
 
-        if (exception.IsCanceled) return;
-        if (!exception.IsSuccess && exception.Error is not null)
-        {
-            Errors["save"] = [$"Det gick inte att spara sidan: {exception.Error.Message}"];
-        }
-
-        if (Volatile.Read(ref _changeVersion) > Volatile.Read(ref _savedVersion))
-        {
-            await SaveLatestAsync(ct);
+            if (exception.Value is true)
+                LocalSavedAt = DateTime.UtcNow;
+            
+            if (Volatile.Read(ref _changeVersion) > Volatile.Read(ref _savedVersion))
+                continue; // A newer edit arrived during the successful save.
+            
+            IsSaving = false;
+            await InvokeAsync(StateHasChanged);
+            return;
         }
     }
 
@@ -207,7 +225,7 @@ public class EditorPageBase : ComponentBase, IDisposable
                 {
 
                     PageEditorModel publishModel = new()
-                    {   
+                    {
                         Id = PageEditorModel.Id,
                         Meta = PageEditorModel.Meta,
                         ContentJSON = DeltaToNestedNormalizationService.Normalize(PageEditorModel.ContentJSON)

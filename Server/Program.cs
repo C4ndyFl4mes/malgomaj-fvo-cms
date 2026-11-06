@@ -21,6 +21,11 @@ using Server.API.Routes.Internal.Authentication.SignUp;
 using Server.API.Routes.Internal.Authentication.SignIn;
 using Server.API.Routes.Internal.Authentication;
 using Server.API.Validators;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components.Authorization;
+using System.Security.Claims;
+using Server.Services;
+using Microsoft.AspNetCore.Authentication;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -81,34 +86,38 @@ builder.Services.AddScoped<PageRemoveData>();
 builder.Services.AddScoped<IValidator<UserModel>, UserModelValidator>();
 
 #region Authentication and Authorization
-string secretKey = builder.Configuration["secret_key.txt"] ?? throw new InvalidOperationException("Secret key is not configured.");
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+builder.Services.AddScoped<UserSessionValidator>();
+builder.Services.AddScoped<AuthenticationStateProvider, CmsAuthenticationStateProvider>();
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["issuer.txt"],
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["audience.txt"],
-            ValidateLifetime = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-            ValidateIssuerSigningKey = true
-        };
+        options.Cookie.Name = "__Host-Cms.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.Path = "/";
 
-        options.Events = new JwtBearerEvents
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+        options.SlidingExpiration = true;
+
+        options.LoginPath = "/admin";
+        options.AccessDeniedPath = "/access-denied";
+
+        options.Events.OnRedirectToLogin = context =>
         {
-            OnMessageReceived = context =>
+            if (context.Request.Path.StartsWithSegments("/api"))
             {
-                if (context.Request.Cookies.TryGetValue("accessToken", out string? token))
-                {
-                    context.Token = token;
-                }
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return Task.CompletedTask;
             }
+
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
         };
     });
-
+builder.Services.AddAuthorization();
+builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("InternalUsers", policy =>
     {

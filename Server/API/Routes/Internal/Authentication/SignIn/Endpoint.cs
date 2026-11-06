@@ -1,4 +1,9 @@
+using System.Security.Claims;
 using FastEndpoints;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Server.API.Entities;
+using Server.API.Exceptions;
 
 namespace Server.API.Routes.Internal.Authentication.SignIn;
 
@@ -12,25 +17,33 @@ public class SignInEndpoint(SignInData data) : Endpoint<UserModel, Authenticatio
 
     public override async Task<AuthenticationResponse> ExecuteAsync(UserModel model, CancellationToken ct)
     {
-        Token token = await data.SignIn(model, ct);
+        UserEntity user = await data.VerifyCredentialsAsync(model, ct);
 
-        HttpContext.Response.Cookies.Append("accessToken", token.AccessToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddMinutes(12),
-            Path = "/"
-        });
+        List<Claim> claims =
+        [
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Role, user.Role.Name)
+        ];
 
-        HttpContext.Response.Cookies.Append("refreshToken", token.RefreshToken, new CookieOptions
+        ClaimsIdentity identity = new(
+            claims,
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+
+        ClaimsPrincipal principal = new(identity);
+
+        AuthenticationProperties properties = new()
         {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddDays(7),
-            Path = "/"
-        });
+            IsPersistent = false,
+            AllowRefresh = true  
+        };
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            properties
+        );
 
         return new()
         {
