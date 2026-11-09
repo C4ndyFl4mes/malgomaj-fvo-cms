@@ -37,14 +37,66 @@ export async function signin(request) {
     }
 }
 
-export async function refresh()
-{
+export async function signout() {
     try {
-        await fetch("/api/user/refresh", {
+        const response = await fetch("/api/auth/signout", {
             method: "POST",
-            credentials: "include"
+            headers: { "Content-Type": "application/json" }
         });
-    } catch {
-        // Ignorerar för tillfället...
+
+        const contentType = response.headers.get("content-type") || "";
+        const payload = contentType.includes("application/json") ? await response.json() : null;
+
+        if (!response.ok) {
+            return {
+                IsSuccess: false,
+                Error: payload ?? {
+                    StatusCode: response.status,
+                    Type: "HttpError",
+                    Detail: "Utloggningen misslyckades."
+                }
+            };
+        }
+
+        return {
+            IsSuccess: true,
+            Data: payload
+        };
+    } catch (error) {
+        return {
+            IsSuccess: false,
+            Error: {
+                StatusCode: 0,
+                Type: "NetworkError",
+                Detail: error?.message ?? "Nätverksfel."
+            }
+        };
     }
 }
+
+export const authRefreshCycle = {
+    start: function (intervalMin) {
+        this.stop();
+
+        this.timer = setInterval(async () => {
+            try {
+                const response = await fetch("/api/auth/refresh", {
+                    method: "POST",
+                    credentials: "same-origin"
+                });
+
+                if (response.status === 401) {
+                    window.location.assign("/admin");
+                }
+            } catch (error) {
+                console.error("Authentication refresh cycle failed: " + error);
+            }
+        }, intervalMin * 60 * 1000);
+    },
+    stop: function () {
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
+    }
+};

@@ -1,12 +1,16 @@
-﻿@inherits LayoutComponentBase
-
-@* <TokenRefresher /> *@
+﻿@using Server.API.Routes.Internal.Authentication
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 
 <div class="flex flex-col min-h-screen">
     <div class="flex flex-1">
         <Sidebar />
         <div class="flex-1 flex flex-col">
-            <Breadcrumbs />
+            <div class="flex flex-row justify-between">
+                <Breadcrumbs />
+                <button class="button-1 bg-blue-400 cursor-pointer m-2.5" @onclick="SignOut">Logga ut</button>
+            </div>
             <main class="flex-1 p-4 container mx-auto">
                 @Body
             </main>
@@ -19,3 +23,37 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div> *@
+
+@code {
+    private (bool IsSuccess, string Message) ResultMessage { get; set; } = (false, string.Empty);
+
+    private IJSObjectReference _authModule { get; set; } = default!;
+
+    // Starts the refresh cycle and sends a HTTP-request every ten minutes.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _authModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "/otherJS/auth.js");
+            await _authModule.InvokeVoidAsync("authRefreshCycle.start", 10);
+        }
+    }
+
+    // Signs out the user and navigates the user to the /admin page.
+    private async Task SignOut()
+    {
+        ClientCallResponse<AuthenticationResponse> response = await
+            _authModule.InvokeAsync<ClientCallResponse<AuthenticationResponse>>("signout");
+        if (!response.IsSuccess || response.Data is null)
+        {
+            ResultMessage = (false, response.Error?.Detail ?? "Ett oväntat fel inträffade.");
+        }
+        else
+        {
+            ResultMessage = (true, response.Data.Message);
+
+            await _authModule.InvokeVoidAsync("authRefreshCycle.stop");
+        }
+        NavigationManager.NavigateTo("/admin", true);
+    }
+}
