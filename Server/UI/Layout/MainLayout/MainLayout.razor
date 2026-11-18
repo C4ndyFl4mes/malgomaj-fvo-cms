@@ -29,13 +29,13 @@
 
     private IJSObjectReference _authModule { get; set; } = default!;
 
-    // Starts the refresh cycle and sends a HTTP-request every ten minutes.
+    // Starts the refresh cycle and sends a HTTP-request every five minutes.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             _authModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "/otherJS/auth.js");
-            await _authModule.InvokeVoidAsync("authRefreshCycle.start", 10);
+            await _authModule.InvokeVoidAsync("authRefreshCycle.start", 5);
         }
     }
 

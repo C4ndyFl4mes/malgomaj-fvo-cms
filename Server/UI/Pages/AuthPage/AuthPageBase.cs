@@ -15,7 +15,8 @@ public class AuthPageBase : ComponentBase, IAsyncDisposable
     protected UserModel AuthFields { get; set; } = new()
     {
         Email = string.Empty,
-        Password = string.Empty
+        Password = string.Empty,
+        RememberMe = false
     };
 
     protected Dictionary<string, string[]> ValidationErrors { get; set; } = [];

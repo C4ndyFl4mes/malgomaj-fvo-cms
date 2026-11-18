@@ -1,0 +1,12 @@
+@namespace Server.UI.Components.Checkbox
+@inherits CheckboxBase
+
+<label class="flex items-center gap-x-2">
+    <button type="button" class="w-8 h-8 rounded-md bg-slate-100 cursor-pointer" @onclick="OnClick">
+        @if (Value)
+        {
+            <img src="/icons/check.svg" alt="Ikon" width="32" height="32" />
+        }
+    </button>
+    <span>@Label</span>
+</label>

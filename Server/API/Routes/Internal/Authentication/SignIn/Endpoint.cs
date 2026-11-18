@@ -35,7 +35,7 @@ public class SignInEndpoint(SignInData data) : Endpoint<UserModel, Authenticatio
 
         AuthenticationProperties properties = new()
         {
-            IsPersistent = false,
+            IsPersistent = model.RememberMe,
             AllowRefresh = true  
         };
 
