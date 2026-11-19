@@ -20,6 +20,16 @@ li:has(>a.active):hover {
 }
 
 
+.error {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border-width: 2px;
+    border-radius: 0.375rem;
+
+    background-color: oklch(80.8% 0.114 19.571);
+    border-color: oklch(63.7% 0.237 25.331);
+}
+
 .button-1 {
     transition-duration: 200ms;
 

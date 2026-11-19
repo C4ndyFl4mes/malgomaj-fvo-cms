@@ -42,7 +42,7 @@
             </div>
             <Checkbox Label="Kom ihåg mig." @bind-value="AuthFields.RememberMe" />
         </div>
-        <button type="button" @onclick="AuthenticateAsync"
+        <button type="button" @onclick="AuthenticateAsync" disabled="@IsSubmittingSignInRequest"
                 class="button-1 bg-blue-300 mx-auto cursor-pointer">
             Logga in
         </button>

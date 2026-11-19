@@ -11,9 +11,20 @@ export async function signin(request) {
         const payload = contentType.includes("application/json") ? await response.json() : null;
 
         if (!response.ok) {
+            if (payload) {
+                return {
+                    IsSuccess: false,
+                    Error: {
+                        StatusCode: response.status,
+                        Type: "HttpError",
+                        Detail: payload.message
+                    }
+                };
+            }
+
             return {
                 IsSuccess: false,
-                Error: payload ?? {
+                Error: {
                     StatusCode: response.status,
                     Type: "HttpError",
                     Detail: "Inloggningen misslyckades."
@@ -48,6 +59,17 @@ export async function signout() {
         const payload = contentType.includes("application/json") ? await response.json() : null;
 
         if (!response.ok) {
+            if (payload) {
+                return {
+                    IsSuccess: false,
+                    Error: {
+                        StatusCode: response.status,
+                        Type: "HttpError",
+                        Detail: payload.message
+                    }
+                };
+            }
+            
             return {
                 IsSuccess: false,
                 Error: payload ?? {
