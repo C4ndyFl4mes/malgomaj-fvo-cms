@@ -71,6 +71,7 @@ builder.Services.AddScoped<ComponentExceptionHandler>();
 
 // States:
 builder.Services.AddScoped<NavigationState>();
+builder.Services.AddScoped<OverlayHostState>();
 
 // Data services:
 builder.Services.AddScoped<SignInData>();

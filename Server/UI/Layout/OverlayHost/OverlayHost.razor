@@ -1,0 +1,19 @@
+@using Server.Models
+@inherits OverlayHostBase
+
+@foreach (OverlayModel overlay in Overlays)
+{
+    <div @key="overlay.Id" class="fixed inset-0 bg-black/50 z-50 flex flex-row pt-10">
+        <div class="relative w-auto h-fit p-2 mx-auto rounded-md bg-whie shadow-xl">
+            <button type="button"
+                    class="absolute top-0 right-2 text-white text-2xl"
+                    @onclick="() => CloseFromHostAsync(overlay.Id)">
+                &times;
+            </button>
+        </div>
+
+        <CascadingValue Value="@CreateCloseContext(overlay.Id)">
+            <DynamicComponent Type="@overlay.ComponentType" Parameters="@overlay.Parameters" />
+        </CascadingValue>
+    </div>
+}
