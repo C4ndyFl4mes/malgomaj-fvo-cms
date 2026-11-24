@@ -3,6 +3,9 @@ using FluentValidation.Results;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Server.API.Routes.Internal.Authentication;
+using Server.Enums;
+using Server.UI.Components.QuickOverlay;
+using Server.UI.States;
 
 namespace Server.UI.Pages.AuthPage;
 
@@ -11,6 +14,7 @@ public class AuthPageBase : ComponentBase, IAsyncDisposable
     [Inject] protected IJSRuntime JS { get; set; } = default!;
     [Inject] protected IValidator<UserModel> AuthValidator { get; set; } = default!;
     [Inject] protected NavigationManager NavigationManager { get; set; } = default!;
+    [Inject] protected OverlayHostState OverlayHostState { get; set; } = default!;
 
     protected UserModel AuthFields { get; set; } = new()
     {
@@ -21,7 +25,6 @@ public class AuthPageBase : ComponentBase, IAsyncDisposable
 
     protected bool IsSubmittingSignInRequest { get; set; } = false;
     protected Dictionary<string, string[]> ValidationErrors { get; set; } = [];
-    protected (bool IsSuccess, string Message) ResultMessage { get; set; } = (false, string.Empty);
 
     private IJSObjectReference? _authModule;
 
@@ -50,12 +53,30 @@ public class AuthPageBase : ComponentBase, IAsyncDisposable
                 ClientCallResponse<AuthenticationResponse> response = await AuthenticateFromBrowserAsync(AuthFields);
                 if (!response.IsSuccess || response.Data is null)
                 {
-                    ResultMessage = (false, response.Error?.Detail ?? "Ett oväntat fel inträffade.");
+                    OverlayHostState.Append(new()
+                    {
+                        Id = Guid.NewGuid(),
+                        ComponentType = typeof(QuickOverlay),
+                        Parameters = new Dictionary<string, object>
+                        {
+                            ["Message"] = response.Error?.Detail ?? "Ett oväntat fel inträffade.",
+                            ["Selection"] = QuickOverlaySelection.Error
+                        }
+                    });
                 }
                 else
                 {
-                    ResultMessage = (true, response.Data.Message);
-                    NavigationManager.NavigateTo("/admin/panel", forceLoad: true);
+                    NavigationManager.NavigateTo("/admin/panel");
+                    OverlayHostState.Append(new()
+                    {
+                        Id = Guid.NewGuid(),
+                        ComponentType = typeof(QuickOverlay),
+                        Parameters = new Dictionary<string, object>
+                        {
+                            ["Message"] = response.Data.Message,
+                            ["Selection"] = QuickOverlaySelection.Success
+                        }
+                    });
                 }
             }
         }

@@ -7,9 +7,12 @@ using Server.API.Routes.Internal.Page.Publish;
 using Server.API.Routes.Internal.Page.Redact;
 using Server.API.Routes.Internal.Page.Remove;
 using Server.API.Routes.Internal.Page.Save;
+using Server.Enums;
 using Server.Models;
 using Server.Services;
+using Server.UI.Components.ConfirmationOverlay;
 using Server.UI.Components.PageMeta;
+using Server.UI.Components.QuickOverlay;
 using Server.UI.Layout;
 using Server.UI.States;
 
@@ -18,6 +21,7 @@ namespace Server.UI.Pages.Content.PagesPage.EditorPage;
 public class EditorPageBase : ComponentBase, IDisposable
 {
     [Inject] protected NavigationState NavigationState { get; set; } = default!;
+    [Inject] protected OverlayHostState OverlayHostState { get; set; } = default!;
     [Inject] protected EditorGetData EditorGetData { get; set; } = default!;
     [Inject] protected PageSaveData PageSaveData { get; set; } = default!;
     [Inject] protected PagePublishData PagePublishData { get; set; } = default!;
@@ -293,6 +297,23 @@ public class EditorPageBase : ComponentBase, IDisposable
         }
     }
 
+    // Opens the overlay for removing the page.
+    protected void OpenRemoveOverlay()
+    {
+        OverlayHostState.Append(new()
+        {
+            Id = Guid.NewGuid(),
+            ComponentType = typeof(ConfirmationOverlay),
+            Parameters = new Dictionary<string, object>
+            {
+                ["Message"] = "Vill du radera sidan?",
+                ["AcceptBtnText"] = "Radera",
+                ["IsDanger"] = true,
+                ["OnAccept"] = EventCallback.Factory.Create(this, RemoveAsync)
+            }
+        });
+    }
+
     // Removes the page and redirects the user on success.
     protected async Task RemoveAsync()
     {
@@ -327,7 +348,16 @@ public class EditorPageBase : ComponentBase, IDisposable
         }
         else
         {
-            Console.WriteLine($"Sidan {PageEditorModel.Meta.Title} raderades!");
+            OverlayHostState.Append(new()
+            {
+               Id = Guid.NewGuid(),
+               ComponentType = typeof(QuickOverlay),
+               Parameters = new Dictionary<string, object>
+               {
+                   ["Message"] = $"Sidan {PageEditorModel.Meta.Title} raderades!",
+                   ["Selection"] = QuickOverlaySelection.Success
+               } 
+            });
             NavigationManager.NavigateTo("/admin/content/pages");
         }
     }

@@ -1,0 +1,17 @@
+@inherits ConfirmationOverlayBase
+
+<div class="w-[min(92vw,25rem)] max-w-full">
+    <p class="mb-4">@Message</p>
+    <div class="flex justify-end gap-2">
+        <button class="button-1 bg-slate-200 cursor-pointer"
+                @onclick="CancelAsync"
+                disabled="@IsSubmitting">
+            Avbryt
+        </button>
+        <button class="button-1 @AcceptButtonBgColor cursor-pointer"
+                @onclick="AcceptAsync"
+                disabled="@IsSubmitting">
+            @AcceptBtnText
+        </button>
+    </div>
+</div>

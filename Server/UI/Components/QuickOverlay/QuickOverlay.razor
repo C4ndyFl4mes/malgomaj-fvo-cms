@@ -1,0 +1,14 @@
+@using Server.Enums
+@inherits QuickOverlayBase
+
+<div class="py-2 px-4 @BgColor rounded-md flex items-center gap-x-2">
+    @if (Selection == QuickOverlaySelection.Success)
+    {
+        <img src="/icons/check.svg" alt="Info ikon" width="32" height="32" />  
+    } 
+    else
+    {
+        <img src="/icons/info.svg" alt="Info ikon" width="32" height="32" />  
+    }
+    <p class="text-xl">@Message</p>
+</div>
