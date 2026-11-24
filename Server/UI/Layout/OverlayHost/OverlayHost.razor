@@ -1,0 +1,32 @@
+@using Server.Models
+@inherits OverlayHostBase
+
+@foreach (OverlayModel overlay in Overlays)
+{
+    if (typeof(QuickOverlay) != overlay.ComponentType)
+    {
+        <div @key="overlay.Id" class="fixed inset-0 bg-black/50 z-50 flex flex-row justify-center pt-10">
+            <div class="relative w-auto h-fit p-2 rounded-md bg-white shadow-xl">
+                <button type="button" class="absolute top-0 right-2 text-black text-2xl"
+                        @onclick="() => CloseFromHostAsync(overlay.Id)">
+                    &times;
+                </button>
+                <CascadingValue Value="@CreateCloseContext(overlay.Id)">
+                    <DynamicComponent Type="@overlay.ComponentType" Parameters="@overlay.Parameters" />
+                </CascadingValue>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div @key="overlay.Id"
+             class="quick-overlay-host @(IsQuickOverlayClosing(overlay.Id) ? "quick-overlay-exit" : "quick-overlay-enter")"
+             @onanimationend="() => CompleteQuickOverlayCloseAsync(overlay.Id)"
+             @onanimationend:stopPropagation="true">
+            <CascadingValue Value="@CreateCloseContext(overlay.Id)">
+                <DynamicComponent Type="@overlay.ComponentType" Parameters="@overlay.Parameters" />
+            </CascadingValue>
+        </div>
+    }
+
+}

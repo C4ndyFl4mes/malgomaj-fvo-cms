@@ -46,20 +46,5 @@
                 class="button-1 bg-blue-300 mx-auto cursor-pointer">
             Logga in
         </button>
-        @if (ResultMessage.Message != string.Empty)
-        {
-            @if (ResultMessage.IsSuccess)
-            {
-                <div class="success">
-                    <span>@ResultMessage.Message</span>
-                </div>
-            }
-            else
-            {
-                <div class="error">
-                    <span>@ResultMessage.Message</span>
-                </div>
-            }
-        }
     </fieldset>
 </form>

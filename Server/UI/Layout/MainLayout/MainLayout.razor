@@ -1,6 +1,10 @@
 ﻿@using Server.API.Routes.Internal.Authentication
+@using Server.Enums
+@using Server.UI.Components.ConfirmationOverlay
+@using Server.UI.States
 @inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
+@inject OverlayHostState OverlayHostState
 @inject IJSRuntime JS
 
 <div class="flex flex-col min-h-screen">
@@ -9,7 +13,7 @@
         <div class="flex-1 flex flex-col">
             <div class="flex flex-row justify-between">
                 <Breadcrumbs />
-                <button class="button-1 bg-blue-400 cursor-pointer m-2.5" @onclick="SignOut">Logga ut</button>
+                <button class="button-1 bg-blue-400 cursor-pointer m-2.5" @onclick="OpenSignOutOverlay">Logga ut</button>
             </div>
             <main class="flex-1 p-4 container mx-auto">
                 @Body
@@ -39,6 +43,23 @@
         }
     }
 
+    // Opens the overlay for signing out.
+    private void OpenSignOutOverlay()
+    {
+        OverlayHostState.Append(new()
+        {
+            Id = Guid.NewGuid(),
+            ComponentType = typeof(ConfirmationOverlay),
+            Parameters = new Dictionary<string, object>
+            {
+                ["Message"] = "Vill du logga ut?",
+                ["AcceptBtnText"] = "Logga ut",
+                ["IsDanger"] = false,
+                ["OnAccept"] = EventCallback.Factory.Create(this, SignOut)
+            }
+        });
+    }
+
     // Signs out the user and navigates the user to the /admin page.
     private async Task SignOut()
     {
@@ -46,14 +67,32 @@
             _authModule.InvokeAsync<ClientCallResponse<AuthenticationResponse>>("signout");
         if (!response.IsSuccess || response.Data is null)
         {
-            ResultMessage = (false, response.Error?.Detail ?? "Ett oväntat fel inträffade.");
+            OverlayHostState.Append(new()
+            {
+                Id = Guid.NewGuid(),
+                ComponentType = typeof(QuickOverlay),
+                Parameters = new Dictionary<string, object>
+                {
+                    ["Message"] = response.Error?.Detail ?? "Ett oväntat fel inträffade.",
+                    ["Selection"] = QuickOverlaySelection.Error
+                }
+            });
         }
         else
         {
-            ResultMessage = (true, response.Data.Message);
+            OverlayHostState.Append(new()
+            {
+                Id = Guid.NewGuid(),
+                ComponentType = typeof(QuickOverlay),
+                Parameters = new Dictionary<string, object>
+                {
+                    ["Message"] = response.Data.Message,
+                    ["Selection"] = QuickOverlaySelection.Success
+                }
+            });
 
             await _authModule.InvokeVoidAsync("authRefreshCycle.stop");
         }
-        NavigationManager.NavigateTo("/admin", true);
+        NavigationManager.NavigateTo("/admin");
     }
 }
